@@ -1,0 +1,19 @@
+name: Railway Setup - Step 3 Environments
+
+on:
+  workflow_dispatch:
+
+jobs:
+  get-environments:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get project environments
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query": "query { project(id: \"be61082f-3348-416f-a6c3-8f34b2839c73\") { id name environments { edges { node { id name } } } } }"}')
+          echo "$RESULT"
+          echo "::notice::ENVIRONMENTS: $RESULT"
