@@ -1,0 +1,27 @@
+name: Railway Deploy Specific Commit
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      SERVICE_ID: c4e67d61-115f-4230-bf20-12826b71406e
+      ENV_ID: 3f19ef06-e650-41ae-abb7-b377ae8f085b
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy with explicit commit SHA
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "Deploying commit: $SHA"
+          RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"query\": \"mutation serviceInstanceDeployV2(\$serviceId: String!, \$environmentId: String!, \$commitSha: String) { serviceInstanceDeployV2(serviceId: \$serviceId, environmentId: \$environmentId, commitSha: \$commitSha) }\",
+              \"variables\": { \"serviceId\": \"$SERVICE_ID\", \"environmentId\": \"$ENV_ID\", \"commitSha\": \"$SHA\" }
+            }")
+          echo "::notice::DEPLOY: $RESULT"
