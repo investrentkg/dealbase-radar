@@ -14,6 +14,6 @@ jobs:
           RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query": "query { me { id name email } projects { edges { node { id name team { id name } } } } }"}')
+            -d '{"query": "query { projects { edges { node { id name team { id name } } } } }"}')
           echo "$RESULT"
           echo "::notice::RAILWAY_ME: $RESULT"
