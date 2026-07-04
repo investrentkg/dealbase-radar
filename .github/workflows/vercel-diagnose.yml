@@ -1,0 +1,36 @@
+name: Vercel Diagnose
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TEAM_ID: team_ZRjQTrzpkrPD2qrXAWNMBT6f
+      PROJECT_ID: prj_CAWCv8qzUQHPatSZGIb1Q6C0NaPK
+    steps:
+      - name: List latest deployments
+        run: |
+          RESULT=$(curl -s "https://api.vercel.com/v6/deployments?teamId=$TEAM_ID&projectId=$PROJECT_ID&limit=5" \
+            -H "Authorization: Bearer $VERCEL_TOKEN")
+          echo "$RESULT" | python3 -c "
+import json,sys
+d = json.load(sys.stdin)
+for dep in d.get('deployments', []):
+    print(dep.get('uid'), dep.get('readyState'), dep.get('url'), dep.get('createdAt'))
+"
+
+      - name: Check production aliases
+        run: |
+          RESULT=$(curl -s "https://api.vercel.com/v9/projects/$PROJECT_ID/domains?teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN")
+          echo "::notice::DOMAINS: $RESULT"
+
+      - name: Direct fetch of production URL
+        run: |
+          echo "--- headers ---"
+          curl -sI https://dealbase-radar-investrent-s-projects.vercel.app/
+          echo "--- body (first 500 chars) ---"
+          curl -s https://dealbase-radar-investrent-s-projects.vercel.app/ | head -c 500
