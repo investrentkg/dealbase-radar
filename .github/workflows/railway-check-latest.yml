@@ -1,0 +1,27 @@
+name: Railway Check Latest Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      SERVICE_ID: c4e67d61-115f-4230-bf20-12826b71406e
+      ENV_ID: 3f19ef06-e650-41ae-abb7-b377ae8f085b
+    steps:
+      - name: Check latest deployments
+        run: |
+          RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"query\": \"query { deployments(input: { serviceId: \\\"$SERVICE_ID\\\", environmentId: \\\"$ENV_ID\\\" }, first: 3) { edges { node { id status createdAt } } } }\"
+            }")
+          echo "::notice::DEPLOYMENTS: $RESULT"
+
+      - name: Health check
+        run: |
+          HEALTH=$(curl -s https://backend-production-0a9f.up.railway.app/health)
+          echo "::notice::HEALTH: $HEALTH"
