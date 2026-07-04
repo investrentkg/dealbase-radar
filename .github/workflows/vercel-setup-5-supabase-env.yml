@@ -1,0 +1,39 @@
+name: Vercel Setup - Step 5 Add Supabase Env
+
+on:
+  workflow_dispatch:
+
+jobs:
+  add-env:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TEAM_ID: team_ZRjQTrzpkrPD2qrXAWNMBT6f
+      PROJECT_ID: prj_CAWCv8qzUQHPatSZGIb1Q6C0NaPK
+    steps:
+      - name: Add VITE_SUPABASE_URL
+        run: |
+          curl -s -X POST "https://api.vercel.com/v10/projects/$PROJECT_ID/env?teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"key":"VITE_SUPABASE_URL","value":"https://yebaivaxptetofklxbzq.supabase.co","type":"plain","target":["production","preview"]}'
+
+      - name: Add VITE_SUPABASE_ANON_KEY
+        run: |
+          curl -s -X POST "https://api.vercel.com/v10/projects/$PROJECT_ID/env?teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"key":"VITE_SUPABASE_ANON_KEY","value":"sb_publishable_2PQIIheiVkOhyQlPuzgQ1w__QsdnUqU","type":"plain","target":["production","preview"]}'
+
+      - name: Trigger redeploy
+        run: |
+          RESULT=$(curl -s -X POST "https://api.vercel.com/v13/deployments?teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "dealbase-radar",
+              "project": "prj_CAWCv8qzUQHPatSZGIb1Q6C0NaPK",
+              "target": "production",
+              "gitSource": { "type": "github", "repo": "dealbase-radar", "org": "investrentkg", "ref": "main" }
+            }')
+          echo "::notice::REDEPLOY: $RESULT"
