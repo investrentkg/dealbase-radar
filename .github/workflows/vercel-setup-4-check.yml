@@ -1,0 +1,24 @@
+name: Vercel Setup - Step 4 Check Status
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TEAM_ID: team_ZRjQTrzpkrPD2qrXAWNMBT6f
+      DEPLOYMENT_ID: dpl_66cPnYnse2prWzzfX3ZHKWhiRREa
+    steps:
+      - name: Check deployment status
+        run: |
+          RESULT=$(curl -s "https://api.vercel.com/v13/deployments/$DEPLOYMENT_ID?teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN")
+          STATUS=$(echo "$RESULT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('readyState'), d.get('url'))")
+          echo "::notice::STATUS: $STATUS"
+
+      - name: Check live page
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://dealbase-radar-investrent-s-projects.vercel.app/logowanie)
+          echo "::notice::LIVE_PAGE_CHECK: $HTTP_CODE"
