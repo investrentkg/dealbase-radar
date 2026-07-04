@@ -121,6 +121,13 @@ export function SearchPage() {
         </div>
       )}
 
+      {!results && !loading && !error && (
+        <div className="text-center py-20 text-ink-soft text-sm border border-dashed border-line rounded-xl">
+          <div className="text-3xl mb-3">🔍</div>
+          Wpisz miasto i kliknij "Szukaj" — przeszukamy wszystkie portale naraz.
+        </div>
+      )}
+
       {loading && (
         <div className="text-center py-16">
           <div className="inline-flex items-center gap-2 text-ink-soft text-sm">

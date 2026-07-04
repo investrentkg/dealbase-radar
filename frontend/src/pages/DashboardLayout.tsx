@@ -43,7 +43,7 @@ export function DashboardLayout() {
 
   return (
     <div className="min-h-screen flex">
-      <aside className="w-56 border-r border-line bg-cream-2 flex flex-col">
+      <aside className="hidden md:flex w-56 border-r border-line bg-cream-2 flex-col">
         <div className="p-5 border-b border-line">
           <Logo />
         </div>
@@ -86,12 +86,30 @@ export function DashboardLayout() {
           </button>
         </div>
       </aside>
-      <div className="flex-1 flex flex-col">
-        <header className="h-14 border-b border-line bg-white flex items-center px-8 flex-shrink-0">
-          <h2 className="text-sm font-medium text-ink-soft">
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-14 border-b border-line bg-white flex items-center px-4 md:px-8 flex-shrink-0 gap-4">
+          <div className="md:hidden flex-shrink-0">
+            <Logo />
+          </div>
+          <h2 className="text-sm font-medium text-ink-soft hidden md:block">
             {PAGE_TITLES[location.pathname] || ''}
           </h2>
         </header>
+        <nav className="md:hidden flex overflow-x-auto border-b border-line bg-white px-2">
+          {NAV_ITEMS.map(item => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `px-3 py-2.5 text-xs whitespace-nowrap border-b-2 transition-colors ${
+                  isActive ? 'text-ink font-medium border-blue' : 'text-ink-soft border-transparent'
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
