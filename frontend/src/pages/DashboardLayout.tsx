@@ -5,6 +5,8 @@ import { Logo } from '../components/Logo'
 const NAV_ITEMS = [
   { to: '/wyszukiwarka', label: 'Wyszukiwarka' },
   { to: '/obserwowane', label: 'Obserwowane' },
+  { to: '/alerty', label: 'Alerty' },
+  { to: '/trend-rynku', label: 'Trend rynku' },
 ]
 
 export function DashboardLayout() {

@@ -5,6 +5,8 @@ import { RegisterPage } from './pages/RegisterPage'
 import { DashboardLayout } from './pages/DashboardLayout'
 import { SearchPage } from './pages/SearchPage'
 import { WatchlistPage } from './pages/WatchlistPage'
+import { AlertsPage } from './pages/AlertsPage'
+import { MarketTrendPage } from './pages/MarketTrendPage'
 
 export default function App() {
   return (
@@ -16,6 +18,8 @@ export default function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/wyszukiwarka" element={<SearchPage />} />
             <Route path="/obserwowane" element={<WatchlistPage />} />
+            <Route path="/alerty" element={<AlertsPage />} />
+            <Route path="/trend-rynku" element={<MarketTrendPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/wyszukiwarka" replace />} />
         </Routes>

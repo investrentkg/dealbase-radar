@@ -140,3 +140,22 @@ export function createWatchlist(name: string, criteria: SearchCriteria) {
 export function deleteWatchlist(id: string) {
   return request<void>(`/api/watchlist/${id}`, { method: 'DELETE' })
 }
+
+// ── Alerty ────────────────────────────────────────────────────────────
+export interface NotificationPreferences {
+  email_enabled: boolean
+  sms_enabled: boolean
+  push_enabled: boolean
+  frequency: 'instant' | 'daily_digest'
+}
+
+export function getAlertPreferences() {
+  return request<NotificationPreferences>('/api/alerts/preferences')
+}
+
+export function updateAlertPreferences(prefs: Partial<NotificationPreferences>) {
+  return request<NotificationPreferences>('/api/alerts/preferences', {
+    method: 'PUT',
+    body: JSON.stringify(prefs),
+  })
+}
