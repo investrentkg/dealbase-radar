@@ -1,0 +1,56 @@
+name: Railway Setup - Step 5 Configure Service
+
+on:
+  workflow_dispatch:
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      PROJECT_ID: be61082f-3348-416f-a6c3-8f34b2839c73
+      ENV_ID: 3f19ef06-e650-41ae-abb7-b377ae8f085b
+      SERVICE_ID: c4e67d61-115f-4230-bf20-12826b71406e
+    steps:
+      - name: Set root directory to backend/
+        run: |
+          RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"query\": \"mutation serviceInstanceUpdate(\$serviceId: String!, \$environmentId: String!, \$input: ServiceInstanceUpdateInput!) { serviceInstanceUpdate(serviceId: \$serviceId, environmentId: \$environmentId, input: \$input) }\",
+              \"variables\": {
+                \"serviceId\": \"$SERVICE_ID\",
+                \"environmentId\": \"$ENV_ID\",
+                \"input\": { \"rootDirectory\": \"/backend\" }
+              }
+            }")
+          echo "$RESULT"
+          echo "::notice::ROOT_DIR: $RESULT"
+
+      - name: Set environment variables
+        run: |
+          RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"query\": \"mutation variableCollectionUpsert(\$input: VariableCollectionUpsertInput!) { variableCollectionUpsert(input: \$input) }\",
+              \"variables\": {
+                \"input\": {
+                  \"projectId\": \"$PROJECT_ID\",
+                  \"environmentId\": \"$ENV_ID\",
+                  \"serviceId\": \"$SERVICE_ID\",
+                  \"variables\": {
+                    \"RADAR_SUPABASE_URL\": \"${{ secrets.RADAR_SUPABASE_URL }}\",
+                    \"RADAR_SUPABASE_SERVICE_KEY\": \"${{ secrets.RADAR_SUPABASE_SERVICE_KEY }}\",
+                    \"MARKET_INTEL_SUPABASE_URL\": \"${{ secrets.RADAR_SUPABASE_URL }}\",
+                    \"MARKET_INTEL_SUPABASE_SERVICE_KEY\": \"${{ secrets.RADAR_SUPABASE_SERVICE_KEY }}\",
+                    \"APIFY_TOKEN\": \"${{ secrets.APIFY_TOKEN }}\",
+                    \"CENOGRAM_API_KEY\": \"${{ secrets.CENOGRAM_API_KEY }}\",
+                    \"JWT_SECRET\": \"${{ secrets.PROD_JWT_SECRET }}\"
+                  }
+                }
+              }
+            }")
+          echo "$RESULT"
+          echo "::notice::VARIABLES: $RESULT"
