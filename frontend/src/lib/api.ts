@@ -63,6 +63,10 @@ export function login(email: string, password: string) {
   })
 }
 
+export function getMe() {
+  return request<{ user: AuthUser }>('/api/auth/me')
+}
+
 // ── Wyszukiwanie ──────────────────────────────────────────────────────
 export interface SearchCriteria {
   city: string

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { radarDb } from '../db/clients'
+import { AuthRequest, requireAuth } from '../middleware/auth'
 
 export const authRouter = Router()
 
@@ -112,4 +113,11 @@ authRouter.post('/login', async (req: Request, res: Response) => {
     token,
     user: { id: user.id, email: user.email, plan: user.plan, trial_ends_at: user.trial_ends_at, referral_code: user.referral_code },
   })
+})
+
+// ── GET /api/auth/me ─────────────────────────────────────────────────
+// Dziala niezaleznie od tego, czy user zalogowal sie przez email/haslo
+// czy przez Google (Supabase Auth) - requireAuth juz to rozroznil.
+authRouter.get('/me', requireAuth, (req: AuthRequest, res: Response) => {
+  res.json({ user: req.user })
 })

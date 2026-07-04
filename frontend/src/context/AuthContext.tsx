@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import * as api from '../lib/api'
+import { supabase } from '../lib/supabase'
 
 interface AuthContextValue {
   user: api.AuthUser | null
@@ -26,6 +27,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else localStorage.removeItem(STORAGE_KEY)
   }
 
+  // Nasluchuje na sesje Supabase (logowanie przez Google) - po powrocie
+  // z ekranu zgody Google, supabase-js samo wychwytuje token z URL i
+  // emituje zdarzenie SIGNED_IN, na ktore tutaj reagujemy.
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.access_token) {
+        api.setToken(session.access_token)
+        try {
+          const me = await api.getMe()
+          persist(me.user as api.AuthUser)
+        } catch {
+          // Token Supabase jest OK, ale backend go jeszcze nie rozpoznaje -
+          // ciche niepowodzenie, user zobaczy stan niezalogowany.
+        }
+      }
+    })
+    return () => listener.subscription.unsubscribe()
+  }, [])
+
   const doLogin = useCallback(async (email: string, password: string) => {
     setLoading(true)
     try {
@@ -51,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const doLogout = useCallback(() => {
     api.setToken(null)
     persist(null)
+    supabase.auth.signOut()
   }, [])
 
   return (
