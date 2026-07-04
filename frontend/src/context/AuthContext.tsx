@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 interface AuthContextValue {
   user: api.AuthUser | null
   loading: boolean
+  checkingSession: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string, referralCode?: string) => Promise<void>
   logout: () => void
@@ -20,6 +21,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return raw ? JSON.parse(raw) : null
   })
   const [loading, setLoading] = useState(false)
+  // Jesli mamy juz zapisanego usera z poprzedniej sesji (localStorage), nie
+  // trzeba czekac na sprawdzenie sesji Supabase - pokazujemy panel od razu.
+  // Czekamy tylko gdy NIE mamy nikogo zapisanego, bo to moze byc powrot z
+  // przekierowania Google OAuth, ktore jeszcze nie zdazylo dostarczyc sesji.
+  const [checkingSession, setCheckingSession] = useState(!user)
 
   const persist = (u: api.AuthUser | null) => {
     setUser(u)
@@ -31,6 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // z ekranu zgody Google, supabase-js samo wychwytuje token z URL i
   // emituje zdarzenie SIGNED_IN, na ktore tutaj reagujemy.
   useEffect(() => {
+    // Sprawdzamy tez istniejaca sesje od razu (np. po odswiezeniu strony
+    // z aktywna sesja Supabase, zanim onAuthStateChange zdazy cokolwiek wyemitowac)
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) setCheckingSession(false)
+    })
+
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.access_token) {
         api.setToken(session.access_token)
@@ -42,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // ciche niepowodzenie, user zobaczy stan niezalogowany.
         }
       }
+      setCheckingSession(false)
     })
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -75,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login: doLogin, register: doRegister, logout: doLogout }}>
+    <AuthContext.Provider value={{ user, loading, checkingSession, login: doLogin, register: doRegister, logout: doLogout }}>
       {children}
     </AuthContext.Provider>
   )

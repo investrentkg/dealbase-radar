@@ -23,8 +23,19 @@ function daysLeft(trialEndsAt: string | null): number | null {
 }
 
 export function DashboardLayout() {
-  const { user, logout } = useAuth()
+  const { user, logout, checkingSession } = useAuth()
   const location = useLocation()
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="inline-flex items-center gap-2 text-ink-soft text-sm">
+          <span className="w-2 h-2 rounded-full bg-blue animate-pulse" />
+          Sprawdzam sesję...
+        </div>
+      </div>
+    )
+  }
 
   if (!user) return <Navigate to="/logowanie" replace />
 
