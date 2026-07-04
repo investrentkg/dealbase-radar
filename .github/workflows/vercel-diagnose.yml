@@ -6,23 +6,9 @@ on:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      TEAM_ID: team_ZRjQTrzpkrPD2qrXAWNMBT6f
-      PROJECT_ID: prj_CAWCv8qzUQHPatSZGIb1Q6C0NaPK
     steps:
-      - name: List latest deployments
+      - name: Check correct production URL
         run: |
-          curl -s "https://api.vercel.com/v6/deployments?teamId=$TEAM_ID&projectId=$PROJECT_ID&limit=5" -H "Authorization: Bearer $VERCEL_TOKEN" > deployments.json
-          echo "::notice::DEPLOYMENTS: $(cat deployments.json)"
-
-      - name: Check production domain assignment
-        run: |
-          curl -s "https://api.vercel.com/v9/projects/$PROJECT_ID/domains?teamId=$TEAM_ID" -H "Authorization: Bearer $VERCEL_TOKEN" > domains.json
-          echo "::notice::DOMAINS: $(cat domains.json)"
-
-      - name: Direct fetch of production URL
-        run: |
-          CODE=$(curl -s -o response.html -w "%{http_code}" https://dealbase-radar-investrent-s-projects.vercel.app/)
-          echo "::notice::ROOT_STATUS: $CODE"
-          echo "::notice::ROOT_BODY_SNIPPET: $(head -c 300 response.html)"
+          CODE=$(curl -sL -o response.html -w "%{http_code}" https://dealbase-radar.vercel.app/logowanie)
+          echo "::notice::CORRECT_URL_STATUS: $CODE"
+          echo "::notice::BODY_SNIPPET: $(head -c 400 response.html)"
