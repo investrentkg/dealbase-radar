@@ -1,19 +1,19 @@
-name: Railway Setup - Step 1 Explore
+name: Railway Setup - Step 2 Create Project
 
 on:
   workflow_dispatch:
 
 jobs:
-  explore:
+  create-project:
     runs-on: ubuntu-latest
     steps:
-      - name: Query Railway account and teams
+      - name: Create Railway project
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query": "query { projects { edges { node { id name team { id name } } } } }"}')
+            -d '{"query": "mutation projectCreate($input: ProjectCreateInput!) { projectCreate(input: $input) { id name } }", "variables": {"input": {"name": "dealbase-radar"}}}')
           echo "$RESULT"
-          echo "::notice::RAILWAY_ME: $RESULT"
+          echo "::notice::PROJECT_CREATE: $RESULT"
