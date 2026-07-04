@@ -16,6 +16,7 @@ export function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [savedName, setSavedName] = useState<string | null>(null)
+  const [sortByScore, setSortByScore] = useState(true)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -52,9 +53,15 @@ export function SearchPage() {
     }
   }
 
+  const displayedListings = results
+    ? [...results.listings].sort((a, b) => {
+        if (!sortByScore) return 0
+        return (b.dealScore?.score ?? -1) - (a.dealScore?.score ?? -1)
+      })
+    : []
+
   return (
     <div className="max-w-5xl mx-auto px-8 py-8">
-      <h1 className="font-serif text-2xl mb-1">Wyszukiwarka</h1>
       <p className="text-ink-soft text-sm mb-6">Jedno zapytanie przeszukuje wszystkie portale naraz</p>
 
       <form onSubmit={onSubmit} className="bg-white border border-line rounded-xl p-5 mb-6 flex flex-wrap gap-3 items-end">
@@ -115,17 +122,30 @@ export function SearchPage() {
       )}
 
       {loading && (
-        <div className="text-center py-16 text-ink-soft text-sm">
-          Przeszukuję portale — pierwsze wyszukiwanie może potrwać do minuty...
+        <div className="text-center py-16">
+          <div className="inline-flex items-center gap-2 text-ink-soft text-sm">
+            <span className="w-2 h-2 rounded-full bg-blue animate-pulse" />
+            Przeszukuję portale — pierwsze wyszukiwanie może potrwać do minuty...
+          </div>
         </div>
       )}
 
       {results && !loading && (
         <div>
-          <div className="text-sm text-ink-soft mb-4">
-            Znaleziono {results.total} ofert · portale: {results.portals_searched.join(', ')}
-            {results.errors && results.errors.length > 0 && (
-              <span className="text-red-500"> · błędy: {results.errors.map(e => e.portal).join(', ')}</span>
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-ink-soft">
+              Znaleziono {results.total} ofert · portale: {results.portals_searched.join(', ')}
+              {results.errors && results.errors.length > 0 && (
+                <span className="text-red-500"> · błędy: {results.errors.map(e => e.portal).join(', ')}</span>
+              )}
+            </div>
+            {results.total > 0 && (
+              <button
+                onClick={() => setSortByScore(s => !s)}
+                className="text-xs text-ink-soft hover:text-ink border border-line rounded-lg px-3 py-1.5 transition-colors"
+              >
+                {sortByScore ? '✓ Sortuj wg Deal Score' : 'Sortuj wg Deal Score'}
+              </button>
             )}
           </div>
 
@@ -136,13 +156,13 @@ export function SearchPage() {
           )}
 
           <div className="space-y-3">
-            {results.listings.map(listing => (
+            {displayedListings.map(listing => (
               <div
                 key={`${listing.portal}-${listing.external_id}`}
-                className={`bg-white border rounded-xl p-4 ${
+                className={`bg-white border rounded-xl p-4 transition-shadow ${
                   listing.dealScore && listing.dealScore.score >= 80
-                    ? 'border-[1.5px] border-[#c9a24a] bg-gradient-to-br from-[#fdf8ec] to-white'
-                    : 'border-line'
+                    ? 'border-[1.5px] border-[#c9a24a] bg-gradient-to-br from-[#fdf8ec] to-white shadow-[0_8px_24px_-12px_rgba(201,162,74,0.35)]'
+                    : 'border-line hover:border-ink-soft/30'
                 }`}
               >
                 <div className="flex items-center gap-4">

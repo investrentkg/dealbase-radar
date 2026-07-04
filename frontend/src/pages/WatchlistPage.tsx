@@ -20,7 +20,6 @@ export function WatchlistPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-8 py-8">
-      <h1 className="font-serif text-2xl mb-1">Obserwowane wyszukiwania</h1>
       <p className="text-ink-soft text-sm mb-6">Zapisane kryteria — tu trafią przyszłe alerty</p>
 
       {loading && <div className="text-ink-soft text-sm">Ładowanie...</div>}

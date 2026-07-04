@@ -53,7 +53,6 @@ export function AlertsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-8 py-8">
-      <h1 className="font-serif text-2xl mb-1">Alerty</h1>
       <p className="text-ink-soft text-sm mb-6">Jak i kiedy chcesz się dowiadywać o nowych okazjach</p>
 
       {loading && <div className="text-ink-soft text-sm">Ładowanie...</div>}
