@@ -1,0 +1,33 @@
+name: Railway Redeploy Latest
+
+on:
+  workflow_dispatch:
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      SERVICE_ID: c4e67d61-115f-4230-bf20-12826b71406e
+      ENV_ID: 3f19ef06-e650-41ae-abb7-b377ae8f085b
+    steps:
+      - name: Trigger new deployment
+        run: |
+          RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"query\": \"mutation serviceInstanceDeployV2(\$serviceId: String!, \$environmentId: String!) { serviceInstanceDeployV2(serviceId: \$serviceId, environmentId: \$environmentId) }\",
+              \"variables\": { \"serviceId\": \"$SERVICE_ID\", \"environmentId\": \"$ENV_ID\" }
+            }")
+          echo "::notice::REDEPLOY: $RESULT"
+
+      - name: Check if GitHub trigger exists (for future auto-deploy)
+        run: |
+          RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"query\": \"query { environmentTriggers(environmentId: \\\"$ENV_ID\\\") { edges { node { id branch repository serviceId } } } }\"
+            }")
+          echo "::notice::TRIGGERS: $RESULT"
