@@ -1,0 +1,25 @@
+name: Vercel Setup - Step 2 Create Project
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      TEAM_ID: team_ZRjQTrzpkrPD2qrXAWNMBT6f
+    steps:
+      - name: Create Vercel project
+        run: |
+          RESULT=$(curl -s -X POST "https://api.vercel.com/v10/projects?teamId=$TEAM_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "dealbase-radar",
+              "framework": "vite",
+              "rootDirectory": "frontend",
+              "gitRepository": { "type": "github", "repo": "investrentkg/dealbase-radar" }
+            }')
+          echo "$RESULT"
+          echo "::notice::PROJECT_CREATE: $RESULT"
