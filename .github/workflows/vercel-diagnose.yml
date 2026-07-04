@@ -7,8 +7,11 @@ jobs:
   diagnose:
     runs-on: ubuntu-latest
     steps:
-      - name: Check correct production URL
+      - name: Check alerty page loads
         run: |
-          CODE=$(curl -sL -o response.html -w "%{http_code}" https://dealbase-radar.vercel.app/logowanie)
-          echo "::notice::CORRECT_URL_STATUS: $CODE"
-          echo "::notice::BODY_SNIPPET: $(head -c 400 response.html)"
+          CODE=$(curl -sL -o response.html -w "%{http_code}" https://dealbase-radar.vercel.app/alerty)
+          echo "::notice::ALERTY_STATUS: $CODE"
+      - name: Check trend page loads
+        run: |
+          CODE=$(curl -sL -o response2.html -w "%{http_code}" https://dealbase-radar.vercel.app/trend-rynku)
+          echo "::notice::TREND_STATUS: $CODE"
