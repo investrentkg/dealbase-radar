@@ -1,0 +1,19 @@
+name: Railway Setup - Step 1 Explore
+
+on:
+  workflow_dispatch:
+
+jobs:
+  explore:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Railway account and teams
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query": "query { me { id name email teams { edges { node { id name } } } } }"}')
+          echo "$RESULT"
+          echo "::notice::RAILWAY_ME: $RESULT"
