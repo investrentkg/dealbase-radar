@@ -1,0 +1,29 @@
+name: Verify PDF endpoint
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check
+        run: |
+          {
+            echo "=== health ==="
+            curl -s --max-time 10 "https://backend-production-0a9f.up.railway.app/health"
+            echo ""
+            echo "=== offer-pdf bez auth (oczekiwane 401) ==="
+            curl -s -o /dev/null -w "HTTP: %{http_code}\n" --max-time 10 -X POST "https://backend-production-0a9f.up.railway.app/api/offer-pdf"
+          } > verify_pdf_result.txt
+          cat verify_pdf_result.txt
+      - name: Commit
+        run: |
+          git config user.name "investrentkg"
+          git config user.email "zarzad@investrent.com.pl"
+          git add verify_pdf_result.txt
+          git diff --cached --quiet || git commit -m "diag: weryfikacja endpointu offer-pdf"
+          git push
