@@ -1,1 +1,6 @@
 {"data":{"serviceInstance":{"domains":{"serviceDomains":[{"domain":"backend-production-0a9f.up.railway.app"}],"customDomains":[]}}}}
+
+=== health ===
+{"status":"ok","service":"dealbase-radar-backend","timestamp":"2026-07-05T14:14:16.827Z"}
+=== cron bez sekretu (oczekiwane 403) ===
+{"error":"Forbidden"}
