@@ -8,6 +8,7 @@ import { dealScoreRouter } from './routes/dealscore'
 import { auctionsRouter } from './routes/auctions'
 import { watchlistRouter } from './routes/watchlist'
 import { alertsRouter } from './routes/alerts'
+import { cronRouter } from './routes/cron'
 
 dotenv.config()
 
@@ -26,6 +27,7 @@ app.use('/api/deal-score', dealScoreRouter)
 app.use('/api/auctions', auctionsRouter)
 app.use('/api/watchlist', watchlistRouter)
 app.use('/api/alerts', alertsRouter)
+app.use('/api/cron', cronRouter)
 
 const PORT = process.env.PORT || 4100
 app.listen(PORT, () => {
