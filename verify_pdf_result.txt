@@ -1,0 +1,4 @@
+=== health ===
+{"status":"ok","service":"dealbase-radar-backend","timestamp":"2026-07-05T14:34:18.515Z"}
+=== offer-pdf bez auth (oczekiwane 401) ===
+HTTP: 401
