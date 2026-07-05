@@ -1,0 +1,5 @@
+=== health ===
+{"status":"ok","service":"dealbase-radar-backend","timestamp":"2026-07-05T14:20:54.739Z"}
+=== photo-consent bez auth (oczekiwane 401, NIE 404) ===
+HTTP: 401
+{"error":"Brak tokenu autoryzacji"}
