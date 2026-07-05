@@ -1,0 +1,15 @@
+name: Find backend URL
+on:
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Try candidate URLs
+        run: |
+          for url in dealbase-radar-backend-production.up.railway.app dealbase-radar-production.up.railway.app; do
+            echo "=== $url ==="
+            curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 "https://$url/health" || echo "FAILED"
+            curl -s --max-time 10 "https://$url/health" || echo ""
+            echo ""
+          done
