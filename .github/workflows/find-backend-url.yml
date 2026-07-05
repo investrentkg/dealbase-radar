@@ -6,25 +6,26 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      SERVICE_ID: c4e67d61-115f-4230-bf20-12826b71406e
+      ENV_ID: 3f19ef06-e650-41ae-abb7-b377ae8f085b
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Try candidate URLs
+      - name: Query Railway for domains
         run: |
-          echo "=== dealbase-radar-backend-production ===" > /tmp/result.txt
-          curl -s -o /dev/null -w "HTTP: %{http_code}\n" --max-time 10 "https://dealbase-radar-backend-production.up.railway.app/health" >> /tmp/result.txt 2>&1 || echo "FAILED" >> /tmp/result.txt
-          curl -s --max-time 10 "https://dealbase-radar-backend-production.up.railway.app/health" >> /tmp/result.txt 2>&1
-          echo "" >> /tmp/result.txt
-          echo "=== dealbase-radar-production ===" >> /tmp/result.txt
-          curl -s -o /dev/null -w "HTTP: %{http_code}\n" --max-time 10 "https://dealbase-radar-production.up.railway.app/health" >> /tmp/result.txt 2>&1 || echo "FAILED" >> /tmp/result.txt
-          curl -s --max-time 10 "https://dealbase-radar-production.up.railway.app/health" >> /tmp/result.txt 2>&1
-          cat /tmp/result.txt
+          curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\": \"query { service(id: \\\"$SERVICE_ID\\\") { name domains { serviceDomains { domain } customDomains { domain } } } }\"}" \
+            > railway_domain_result.json
+          cat railway_domain_result.json
       - name: Commit result
         run: |
-          cp /tmp/result.txt url_check_result.txt
           git config user.name "investrentkg"
           git config user.email "zarzad@investrent.com.pl"
-          git add url_check_result.txt
-          git diff --cached --quiet || git commit -m "diag: wynik sprawdzenia URL backendu"
+          git add railway_domain_result.json
+          git diff --cached --quiet || git commit -m "diag: wynik zapytania o domene Railway"
           git push
