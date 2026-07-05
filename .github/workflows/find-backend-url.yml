@@ -22,6 +22,12 @@ jobs:
             -d "{\"query\": \"query { serviceInstance(serviceId: \\\"$SERVICE_ID\\\", environmentId: \\\"$ENV_ID\\\") { domains { serviceDomains { domain } customDomains { domain } } } }\"}" \
             > railway_domain_result.json
           cat railway_domain_result.json
+          echo ""
+          echo "=== testing health ==="
+          curl -s --max-time 10 "https://backend-production-0a9f.up.railway.app/health"
+          echo ""
+          echo "=== testing cron endpoint (bez sekretu, oczekiwane 403) ==="
+          curl -s -X POST --max-time 10 "https://backend-production-0a9f.up.railway.app/api/cron/scan-watchlists"
       - name: Commit result
         run: |
           git config user.name "investrentkg"
