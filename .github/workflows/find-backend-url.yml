@@ -19,7 +19,7 @@ jobs:
           curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\"query\": \"query { service(id: \\\"$SERVICE_ID\\\") { name domains { serviceDomains { domain } customDomains { domain } } } }\"}" \
+            -d "{\"query\": \"query { serviceInstance(serviceId: \\\"$SERVICE_ID\\\", environmentId: \\\"$ENV_ID\\\") { domains { serviceDomains { domain } customDomains { domain } } } }\"}" \
             > railway_domain_result.json
           cat railway_domain_result.json
       - name: Commit result
