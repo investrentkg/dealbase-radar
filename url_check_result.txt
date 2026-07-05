@@ -1,0 +1,6 @@
+=== dealbase-radar-backend-production ===
+HTTP: 404
+{"status":"error","code":404,"message":"Application not found","request_id":"ReM6YCMoRciSowH36WHkDg"}
+=== dealbase-radar-production ===
+HTTP: 404
+{"status":"error","code":404,"message":"Application not found","request_id":"CF5aMWtfQ423wL62LPU1MQ"}
