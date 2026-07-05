@@ -1,0 +1,25 @@
+name: Scan watchlists (2x dziennie)
+
+# Uruchamia skaner watchlist - dla każdej aktywnej watchlisty sprawdza
+# agregator względem nowych ofert i wysyła zbiorczy e-mail, jeśli są
+# nowe trafienia. Godziny w UTC: 6:00 i 15:00 -> 8:00 i 17:00 czasu
+# polskiego (latem, CEST) - rano i po południu, tak jak Daniel chciał
+# "raz albo dwa razy dziennie podsumowanie".
+on:
+  schedule:
+    - cron: '0 6 * * *'
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scan
+        env:
+          CRON_SECRET: ${{ secrets.RADAR_CRON_SECRET }}
+        run: |
+          curl -s -X POST \
+            -H "x-cron-secret: $CRON_SECRET" \
+            --max-time 120 \
+            "https://backend-production-0a9f.up.railway.app/api/cron/scan-watchlists"
