@@ -9,6 +9,7 @@ import { auctionsRouter } from './routes/auctions'
 import { watchlistRouter } from './routes/watchlist'
 import { alertsRouter } from './routes/alerts'
 import { cronRouter } from './routes/cron'
+import { photoConsentRouter } from './routes/photoConsent'
 
 dotenv.config()
 
@@ -28,6 +29,7 @@ app.use('/api/auctions', auctionsRouter)
 app.use('/api/watchlist', watchlistRouter)
 app.use('/api/alerts', alertsRouter)
 app.use('/api/cron', cronRouter)
+app.use('/api/photo-consent', photoConsentRouter)
 
 const PORT = process.env.PORT || 4100
 app.listen(PORT, () => {

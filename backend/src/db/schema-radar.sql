@@ -88,6 +88,31 @@ alter table notification_preferences enable row level security;
 create policy "users manage own preferences" on notification_preferences
   for all using (auth.uid() = user_id);
 
+-- ── Ślad zgody sprzedającego na wykorzystanie jego zdjęć w PDF ──────────
+-- Wymagane przed wygenerowaniem PDF-a z ofertą pochodzącą z agregatora
+-- (nie z własnej bazy InvestRent, gdzie zgoda jest już częścią umowy
+-- pośrednictwa). Nie jest to tylko "ptaszek w interfejsie" - to realny
+-- ślad audytowy: kto, kiedy, dla której konkretnej oferty potwierdził,
+-- że skontaktował się ze sprzedającym i uzyskał zgodę na zdjęcia.
+create table photo_consent_confirmations (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references radar_users(id) on delete cascade,
+  listing_reference text not null, -- np. "otodom:12345" - to samo co listing_reference w alerts_log
+  listing_url text,
+  listing_title text,
+  confirmed_at timestamptz not null default now(),
+  -- Dokładna treść oświadczenia w momencie potwierdzenia - jeśli treść się
+  -- kiedyś zmieni (np. dodamy więcej warunków), stare potwierdzenia
+  -- zachowują dowód NA CO DOKŁADNIE ktoś się zgodził, a nie na aktualną
+  -- (inną) wersję tekstu.
+  statement_text text not null default
+    'Skontaktowałem się ze sprzedającym i uzyskałem zgodę na wykorzystanie jego zdjęć w materiale ofertowym. Sprzedający potwierdził, że zdjęcia są jego autorstwa lub własnością.'
+);
+
+alter table photo_consent_confirmations enable row level security;
+create policy "users manage own consent confirmations" on photo_consent_confirmations
+  for all using (auth.uid() = user_id);
+
 -- ══════════════════════════════════════════════════════════════════════
 -- AUDYT RLS (uruchomic po kazdej zmianie w tym pliku, zgodnie z procedura
 -- obowiazujaca przy pracach nad CRM - ta sama zasada dotyczy Radaru):

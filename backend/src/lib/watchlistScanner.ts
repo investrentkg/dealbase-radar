@@ -132,7 +132,7 @@ export async function scanAllWatchlists(): Promise<ScanResult> {
   for (const [userId, items] of newListingsByUser.entries()) {
     const [{ data: prefs }, { data: user }] = await Promise.all([
       radarDb.from('notification_preferences').select('email_enabled').eq('user_id', userId).maybeSingle(),
-      radarDb.from('radar_users').select('email').eq('id', userId).maybeSingle(),
+      radarDb.from('users').select('email').eq('id', userId).maybeSingle(),
     ])
 
     const emailEnabled = prefs?.email_enabled !== false
