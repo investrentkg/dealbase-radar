@@ -63,3 +63,28 @@ watchlistRouter.delete('/:id', requireAuth, async (req: AuthRequest, res: Respon
   if (error) return res.status(500).json({ error: error.message })
   res.status(204).send()
 })
+
+// ── GET /api/watchlist/:id/matches ────────────────────────────────────
+// Dopasowania od agentow z DealBase CRM (patrz demandSignals.ts) dla
+// konkretnej obserwowanej wyszukiwarki. Sprawdzamy wlasnosc watchlisty
+// recznie (backend uzywa service_role, RLS nie dziala automatycznie tu -
+// to samo zabezpieczenie co reszta tego pliku).
+watchlistRouter.get('/:id/matches', requireAuth, async (req: AuthRequest, res: Response) => {
+  const { data: watchlist } = await radarDb
+    .from('watchlists')
+    .select('id')
+    .eq('id', req.params.id)
+    .eq('user_id', req.user!.id)
+    .maybeSingle()
+
+  if (!watchlist) return res.status(404).json({ error: 'Nie znaleziono watchlisty' })
+
+  const { data, error } = await radarDb
+    .from('demand_signal_matches')
+    .select('*')
+    .eq('watchlist_id', req.params.id)
+    .order('created_at', { ascending: false })
+
+  if (error) return res.status(500).json({ error: error.message })
+  res.json(data)
+})

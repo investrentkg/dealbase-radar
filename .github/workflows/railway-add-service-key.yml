@@ -1,0 +1,31 @@
+name: Railway Add Service Key
+
+on:
+  workflow_dispatch:
+
+jobs:
+  add-var:
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      PROJECT_ID: be61082f-3348-416f-a6c3-8f34b2839c73
+      ENV_ID: 3f19ef06-e650-41ae-abb7-b377ae8f085b
+      SERVICE_ID: c4e67d61-115f-4230-bf20-12826b71406e
+    steps:
+      - name: Add INTERNAL_SERVICE_API_KEY
+        run: |
+          RESULT=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"query\": \"mutation variableCollectionUpsert(\$input: VariableCollectionUpsertInput!) { variableCollectionUpsert(input: \$input) }\",
+              \"variables\": {
+                \"input\": {
+                  \"projectId\": \"$PROJECT_ID\",
+                  \"environmentId\": \"$ENV_ID\",
+                  \"serviceId\": \"$SERVICE_ID\",
+                  \"variables\": { \"INTERNAL_SERVICE_API_KEY\": \"${{ secrets.INTERNAL_SERVICE_API_KEY }}\" }
+                }
+              }
+            }")
+          echo "::notice::VAR_ADDED: $RESULT"

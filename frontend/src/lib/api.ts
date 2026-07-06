@@ -240,3 +240,19 @@ export function simulateNegotiation(payload: {
     body: JSON.stringify(payload),
   })
 }
+
+// ── Dopasowania od agentow (Rynek cień) ──────────────────────────────
+export interface DemandMatch {
+  id: string
+  agency_name: string | null
+  agent_display_name: string | null
+  offer_summary: string
+  offer_price: number | null
+  offer_area: number | null
+  contact_hint: string | null
+  created_at: string
+}
+
+export function getWatchlistMatches(watchlistId: string) {
+  return request<DemandMatch[]>(`/api/watchlist/${watchlistId}/matches`)
+}

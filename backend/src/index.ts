@@ -12,6 +12,7 @@ import { cronRouter } from './routes/cron'
 import { photoConsentRouter } from './routes/photoConsent'
 import { offerPdfRouter } from './routes/offerPdf'
 import { geocodeRouter } from './routes/geocode'
+import { demandSignalsRouter } from './routes/demandSignals'
 import { requireAuth } from './middleware/auth'
 
 dotenv.config()
@@ -35,6 +36,7 @@ app.use('/api/cron', cronRouter)
 app.use('/api/photo-consent', photoConsentRouter)
 app.use('/api/offer-pdf', offerPdfRouter)
 app.use('/api/geocode', requireAuth, geocodeRouter)
+app.use('/api/demand-signals', demandSignalsRouter)
 
 const PORT = process.env.PORT || 4100
 app.listen(PORT, () => {
