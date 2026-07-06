@@ -403,6 +403,20 @@ export function SearchPage() {
                     <div className="text-xs text-ink-soft">{listing.recommendation.detail}</div>
                   </div>
                 )}
+
+                {listing.legalFlags && listing.legalFlags.length > 0 && (
+                  <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div className="text-xs font-semibold text-red-700 mb-1">⚠ Sprawdź przed decyzją</div>
+                    <ul className="text-xs text-red-700 space-y-0.5">
+                      {listing.legalFlags.map((flag, i) => (
+                        <li key={i}>• {flag.label}</li>
+                      ))}
+                    </ul>
+                    <div className="text-[11px] text-red-600/70 mt-1.5">
+                      Wykryte na podstawie treści ogłoszenia — nie zastępuje sprawdzenia księgi wieczystej.
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

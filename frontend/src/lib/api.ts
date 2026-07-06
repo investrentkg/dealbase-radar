@@ -111,6 +111,12 @@ export interface Recommendation {
   suggestedNegotiationPercent: number | null
 }
 
+export interface LegalFlag {
+  category: string
+  label: string
+  matchedPhrase: string
+}
+
 export interface Listing {
   portal: string
   external_id: string
@@ -130,6 +136,7 @@ export interface Listing {
   market_type?: string | null
   dealScore: DealScoreResult | null
   recommendation?: Recommendation | null
+  legalFlags?: LegalFlag[]
 }
 
 export interface SearchResponse {

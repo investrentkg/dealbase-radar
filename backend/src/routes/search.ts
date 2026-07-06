@@ -4,6 +4,7 @@ import { searchAllPortals, getPortalsStatus } from '../portals'
 import { PortalSearchParams, PortalListing } from '../portals/types'
 import { calculateDealScore } from '../lib/dealScoreEngine'
 import { generateRecommendation } from '../lib/recommendationEngine'
+import { detectLegalFlags } from '../lib/legalRiskDetector'
 import { getRcnComparables } from '../lib/cenogram'
 import { detectMarketSegment, detectMarketSegmentDetailed } from '../lib/marketSegment'
 import { marketIntelDb } from '../db/clients'
@@ -224,7 +225,7 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
   const scoredListings = allListings.map(listing => {
     const segmentInfo = detectMarketSegmentDetailed({ title: listing.title, description: listing.description })
     if (!listing.area || !listing.price) {
-      return { ...listing, marketSegment: segmentInfo.segment, segmentConfidence: segmentInfo.confidence, dealScore: null, recommendation: null }
+      return { ...listing, marketSegment: segmentInfo.segment, segmentConfidence: segmentInfo.confidence, dealScore: null, recommendation: null, legalFlags: detectLegalFlags(listing) }
     }
     const segment = segmentInfo.segment
     const offerPricePerM2 = listing.price / listing.area
@@ -244,7 +245,7 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
       percentBelowMarket: score.percentBelowMarket,
       sellerMotivationScore: score.sellerMotivationScore,
       price: listing.price,
-    }) }
+    }), legalFlags: detectLegalFlags(listing) }
   })
 
   // ── Zapis do wspolnej bazy rynkowej (market_intel) ──────────────────
