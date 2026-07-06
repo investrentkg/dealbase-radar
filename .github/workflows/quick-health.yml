@@ -1,0 +1,13 @@
+name: Quick Health Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check
+        run: |
+          HEALTH=$(curl -s https://backend-production-0a9f.up.railway.app/health)
+          echo "::notice::HEALTH: $HEALTH"
