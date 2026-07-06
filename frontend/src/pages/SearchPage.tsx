@@ -396,6 +396,13 @@ export function SearchPage() {
                     </div>
                   </details>
                 )}
+
+                {listing.recommendation && (
+                  <div className="mt-3 bg-blue-tint rounded-lg p-3">
+                    <div className="text-xs font-semibold text-blue mb-1">💡 {listing.recommendation.headline}</div>
+                    <div className="text-xs text-ink-soft">{listing.recommendation.detail}</div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

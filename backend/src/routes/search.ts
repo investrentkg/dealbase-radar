@@ -3,6 +3,7 @@ import { AuthRequest, requireAuth } from '../middleware/auth'
 import { searchAllPortals, getPortalsStatus } from '../portals'
 import { PortalSearchParams, PortalListing } from '../portals/types'
 import { calculateDealScore } from '../lib/dealScoreEngine'
+import { generateRecommendation } from '../lib/recommendationEngine'
 import { getRcnComparables } from '../lib/cenogram'
 import { detectMarketSegment, detectMarketSegmentDetailed } from '../lib/marketSegment'
 import { marketIntelDb } from '../db/clients'
@@ -177,10 +178,53 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
     })
   )
 
+  // ── Pobranie historii z wlasnej bazy PRZED liczeniem score ───────────
+  // Potrzebne do prawdziwego (nie pustego) wskaznika motywacji sprzedajacego:
+  // ile dni oferta jest na rynku i czy cena juz kiedys spadla. Bez tego
+  // sellerMotivationScore bylby zawsze null - a to podstawa rekomendacji
+  // "czy dzialac teraz czy jeszcze negocjowac" (patrz recommendationEngine.ts).
+  const archiveKeys = allListings.map(l => `${l.portal}:${l.external_id}`)
+  const { data: archiveRows } = await marketIntelDb
+    .from('portal_listings_archive')
+    .select('source_portal, source_listing_id, price, first_seen_at, price_history')
+    .in('source_portal', [...new Set(allListings.map(l => l.portal))])
+
+  const archiveByKey = new Map<string, { price: number | null; firstSeenAt: string; priceHistory: any[] }>()
+  for (const row of archiveRows || []) {
+    const key = `${row.source_portal}:${row.source_listing_id}`
+    if (archiveKeys.includes(key)) {
+      archiveByKey.set(key, { price: row.price, firstSeenAt: row.first_seen_at, priceHistory: row.price_history || [] })
+    }
+  }
+
+  function dynamicsForListing(l: PortalListing) {
+    const prior = archiveByKey.get(`${l.portal}:${l.external_id}`)
+    const firstSeen = prior?.firstSeenAt ? new Date(prior.firstSeenAt) : (l.posted_at ? new Date(l.posted_at) : new Date())
+    const daysOnMarket = Math.max(0, Math.floor((Date.now() - firstSeen.getTime()) / (1000 * 60 * 60 * 24)))
+
+    let priceDropCount = 0
+    let priceDropTotalPercent = 0
+    if (prior?.price && l.price && prior.price > l.price) {
+      priceDropCount = (prior.priceHistory?.length || 0) + 1
+      priceDropTotalPercent = ((prior.price - l.price) / prior.price) * 100
+    }
+
+    return {
+      daysOnMarket,
+      priceDropCount,
+      priceDropTotalPercent,
+      // Tempo znikania/pojawiania sie podobnych ofert w okolicy - wymaga
+      // osobnej analizy czasowej ktorej jeszcze nie zbieramy w wystarczajacej
+      // gestosci. Zero = brak sygnalu (neutralne), nie falszywy sygnal.
+      similarListingsDisappearedLast30d: 0,
+      similarListingsAddedLast30d: 0,
+    }
+  }
+
   const scoredListings = allListings.map(listing => {
     const segmentInfo = detectMarketSegmentDetailed({ title: listing.title, description: listing.description })
     if (!listing.area || !listing.price) {
-      return { ...listing, marketSegment: segmentInfo.segment, segmentConfidence: segmentInfo.confidence, dealScore: null }
+      return { ...listing, marketSegment: segmentInfo.segment, segmentConfidence: segmentInfo.confidence, dealScore: null, recommendation: null }
     }
     const segment = segmentInfo.segment
     const offerPricePerM2 = listing.price / listing.area
@@ -193,14 +237,20 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
         listingsAvgPricePerM2: listingsAvgBySegment[segment],
         archiveTrendPricePerM2: archiveTrend?.avg ?? null,
       },
+      dynamics: dynamicsForListing(listing),
     })
-    return { ...listing, marketSegment: segment, segmentConfidence: segmentInfo.confidence, dealScore: score }
+    return { ...listing, marketSegment: segment, segmentConfidence: segmentInfo.confidence, dealScore: score, recommendation: generateRecommendation({
+      dealScore: score.score,
+      percentBelowMarket: score.percentBelowMarket,
+      sellerMotivationScore: score.sellerMotivationScore,
+      price: listing.price,
+    }) }
   })
 
   // ── Zapis do wspolnej bazy rynkowej (market_intel) ──────────────────
   // Fire-and-forget - nie blokujemy odpowiedzi na uzytkownika, jesli
   // zapis archiwum zawiedzie (np. duplikat), to nie problem uzytkownika.
-  archiveListings(allListings).catch(err =>
+  archiveListings(allListings, archiveByKey).catch(err =>
     console.error('[search] Blad archiwizacji do market_intel:', err.message)
   )
 
@@ -220,25 +270,41 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
   })
 })
 
-async function archiveListings(listings: PortalListing[]) {
+async function archiveListings(
+  listings: PortalListing[],
+  archiveByKey: Map<string, { price: number | null; firstSeenAt: string; priceHistory: any[] }>
+) {
   if (listings.length === 0) return
 
-  const rows = listings.map(l => ({
-    source_portal: l.portal,
-    source_listing_id: l.external_id,
-    property_type: l.property_type,
-    transaction_type: l.transaction_type,
-    city: l.address_city,
-    district: l.address_district,
-    street: l.address_street,
-    area_m2: l.area,
-    rooms_count: l.rooms_count,
-    price: l.price,
-    price_per_m2: (l.area && l.price) ? l.price / l.area : null,
-    market_segment: detectMarketSegment({ title: l.title, description: l.description }),
-    last_seen_at: new Date().toISOString(),
-    raw_data: l,
-  }))
+  const rows = listings.map(l => {
+    const prior = archiveByKey.get(`${l.portal}:${l.external_id}`)
+    // Budujemy prawdziwa historie cen w czasie - dopisujemy nowy wpis TYLKO
+    // gdy cena sie realnie zmienila od ostatniego zapisu (nie kazde
+    // wyszukiwanie, zeby nie zaśmiecac historii identycznymi wpisami).
+    const priceChanged = prior?.price !== undefined && prior.price !== null && l.price !== null && prior.price !== l.price
+    const priceHistory = prior?.priceHistory ? [...prior.priceHistory] : []
+    if (priceChanged || priceHistory.length === 0) {
+      priceHistory.push({ date: new Date().toISOString(), price: l.price })
+    }
+
+    return {
+      source_portal: l.portal,
+      source_listing_id: l.external_id,
+      property_type: l.property_type,
+      transaction_type: l.transaction_type,
+      city: l.address_city,
+      district: l.address_district,
+      street: l.address_street,
+      area_m2: l.area,
+      rooms_count: l.rooms_count,
+      price: l.price,
+      price_per_m2: (l.area && l.price) ? l.price / l.area : null,
+      market_segment: detectMarketSegment({ title: l.title, description: l.description }),
+      last_seen_at: new Date().toISOString(),
+      price_history: priceHistory,
+      raw_data: l,
+    }
+  })
 
   // Upsert po (source_portal, source_listing_id) - patrz unique constraint
   // w schema-market-intelligence.sql

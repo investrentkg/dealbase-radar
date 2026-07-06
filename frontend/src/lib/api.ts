@@ -103,6 +103,14 @@ export interface DealScoreResult {
   usedReferences: string[]
 }
 
+export interface Recommendation {
+  urgency: 'dziala_teraz' | 'neguj_i_dzialaj' | 'rynek_rozgrzany' | 'neutralne'
+  headline: string
+  detail: string
+  suggestedNegotiationAmount: number | null
+  suggestedNegotiationPercent: number | null
+}
+
 export interface Listing {
   portal: string
   external_id: string
@@ -121,6 +129,7 @@ export interface Listing {
   has_elevator?: boolean | null
   market_type?: string | null
   dealScore: DealScoreResult | null
+  recommendation?: Recommendation | null
 }
 
 export interface SearchResponse {
