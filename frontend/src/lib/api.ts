@@ -219,3 +219,24 @@ export function getPlaceDetails(placeId: string) {
     `/api/geocode/details?place_id=${encodeURIComponent(placeId)}`
   )
 }
+
+// ── Symulator negocjacji ──────────────────────────────────────────────
+export interface NegotiationResult {
+  likelihood: 'niskie' | 'umiarkowane' | 'wysokie' | 'brak_danych'
+  proposedDiscountPercent: number
+  message: string
+  dataMaturity: 'heurystyka' | 'statystyka'
+  sampleSize: number
+}
+
+export function simulateNegotiation(payload: {
+  proposedPrice: number
+  askingPrice: number
+  referenceAvgPricePerM2: number | null
+  area: number | null
+}) {
+  return request<NegotiationResult>('/api/deal-score/negotiation-simulator', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}

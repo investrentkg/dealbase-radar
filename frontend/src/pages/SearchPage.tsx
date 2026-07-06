@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import * as api from '../lib/api'
 import { ApiError } from '../lib/api'
 import { CityAutocomplete } from '../components/CityAutocomplete'
+import { NegotiationSimulator } from '../components/NegotiationSimulator'
 
 function scoreColor(score: number) {
   if (score >= 75) return 'bg-[#eaf3de] text-[#3b6d11]'
@@ -427,6 +428,8 @@ export function SearchPage() {
                     </div>
                   </div>
                 )}
+
+                {listing.price && <NegotiationSimulator listing={listing} />}
               </div>
             ))}
           </div>
