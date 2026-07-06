@@ -30,6 +30,9 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
     area_max: req.body.area_max,
     rooms_min: req.body.rooms_min,
     rooms_max: req.body.rooms_max,
+    radius_km: req.body.radius_km,
+    center_lat: req.body.center_lat,
+    center_lng: req.body.center_lng,
     limit: req.body.limit || 30,
   }
 
@@ -41,8 +44,27 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
   const portalNames: string[] | undefined = Array.isArray(req.body.portals) ? req.body.portals : undefined
   const results = await searchAllPortals(params, portalNames)
 
-  const allListings: PortalListing[] = results.flatMap(r => r.listings)
+  let allListings: PortalListing[] = results.flatMap(r => r.listings)
   const errors = results.filter(r => r.error).map(r => ({ portal: r.portal, error: r.error }))
+
+  // ── Filtry dodatkowe (posortalowe, po stronie Radaru) ────────────────
+  // Nie wszystkie adaptery portali wspieraja pietro/winde/typ rynku jako
+  // parametr zapytania do Apify - zamiast zmieniac kazdy adapter osobno,
+  // filtrujemy juz pobrane wyniki. Bezpieczniejsze i dziala identycznie
+  // niezaleznie od portalu.
+  const { floor_min, floor_max, has_elevator, market_type } = req.body
+  if (floor_min !== undefined) {
+    allListings = allListings.filter(l => l.floor === null || l.floor === undefined || l.floor >= floor_min)
+  }
+  if (floor_max !== undefined) {
+    allListings = allListings.filter(l => l.floor === null || l.floor === undefined || l.floor <= floor_max)
+  }
+  if (has_elevator === true) {
+    allListings = allListings.filter(l => l.has_elevator === true)
+  }
+  if (market_type) {
+    allListings = allListings.filter(l => !l.market_type || l.market_type === market_type)
+  }
 
   // ── Segmentacja rynkowa: standard vs premium/kurortowy ───────────────
   // Kluczowa poprawka po odkryciu na danych z Kolobrzegu: dzielnica z

@@ -70,10 +70,22 @@ export function getMe() {
 // ── Wyszukiwanie ──────────────────────────────────────────────────────
 export interface SearchCriteria {
   city: string
+  district?: string
   transaction_type?: string
   property_type?: string
   price_min?: number
   price_max?: number
+  area_min?: number
+  area_max?: number
+  rooms_min?: number
+  rooms_max?: number
+  floor_min?: number
+  floor_max?: number
+  has_elevator?: boolean
+  market_type?: 'pierwotny' | 'wtorny'
+  radius_km?: number
+  center_lat?: number
+  center_lng?: number
   portals?: string[]
   limit?: number
 }
@@ -99,6 +111,10 @@ export interface Listing {
   property_type: string
   marketSegment: 'standard' | 'premium'
   segmentConfidence: number
+  floor?: number | null
+  floors_total?: number | null
+  has_elevator?: boolean | null
+  market_type?: string | null
   dealScore: DealScoreResult | null
 }
 
@@ -158,4 +174,20 @@ export function updateAlertPreferences(prefs: Partial<NotificationPreferences>) 
     method: 'PUT',
     body: JSON.stringify(prefs),
   })
+}
+
+// ── Geocode / autocomplete miast ─────────────────────────────────────
+export interface PlacePrediction {
+  place_id: string
+  description: string
+}
+
+export function autocompleteCity(query: string) {
+  return request<{ predictions: PlacePrediction[] }>(`/api/geocode/autocomplete?q=${encodeURIComponent(query)}`)
+}
+
+export function getPlaceDetails(placeId: string) {
+  return request<{ address_components?: any[]; geometry?: { location: { lat: number; lng: number } } }>(
+    `/api/geocode/details?place_id=${encodeURIComponent(placeId)}`
+  )
 }
