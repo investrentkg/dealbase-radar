@@ -52,7 +52,7 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
   // parametr zapytania do Apify - zamiast zmieniac kazdy adapter osobno,
   // filtrujemy juz pobrane wyniki. Bezpieczniejsze i dziala identycznie
   // niezaleznie od portalu.
-  const { floor_min, floor_max, has_elevator, market_type } = req.body
+  const { floor_min, floor_max, has_elevator, market_type, seller_type, price_per_m2_min, price_per_m2_max, keywords_include, keywords_exclude } = req.body
   if (floor_min !== undefined) {
     allListings = allListings.filter(l => l.floor === null || l.floor === undefined || l.floor >= floor_min)
   }
@@ -64,6 +64,35 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
   }
   if (market_type) {
     allListings = allListings.filter(l => !l.market_type || l.market_type === market_type)
+  }
+  if (seller_type === 'agencja') {
+    allListings = allListings.filter(l => l.is_private !== true)
+  }
+  if (seller_type === 'prywatny') {
+    allListings = allListings.filter(l => l.is_private === true)
+  }
+  if (price_per_m2_min !== undefined || price_per_m2_max !== undefined) {
+    allListings = allListings.filter(l => {
+      if (!l.area || !l.price) return true // brak danych - nie odrzucamy, tylko nie da sie policzyc
+      const pricePerM2 = l.price / l.area
+      if (price_per_m2_min !== undefined && pricePerM2 < price_per_m2_min) return false
+      if (price_per_m2_max !== undefined && pricePerM2 > price_per_m2_max) return false
+      return true
+    })
+  }
+  if (keywords_include) {
+    const words: string[] = keywords_include.toLowerCase().split(',').map((w: string) => w.trim()).filter(Boolean)
+    allListings = allListings.filter(l => {
+      const text = `${l.title} ${l.description || ''}`.toLowerCase()
+      return words.some(w => text.includes(w))
+    })
+  }
+  if (keywords_exclude) {
+    const words: string[] = keywords_exclude.toLowerCase().split(',').map((w: string) => w.trim()).filter(Boolean)
+    allListings = allListings.filter(l => {
+      const text = `${l.title} ${l.description || ''}`.toLowerCase()
+      return !words.some(w => text.includes(w))
+    })
   }
 
   // ── Segmentacja rynkowa: standard vs premium/kurortowy ───────────────

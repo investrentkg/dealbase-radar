@@ -12,21 +12,26 @@ function scoreColor(score: number) {
 export function SearchPage() {
   const [city, setCity] = useState('')
   const [propertyType, setPropertyType] = useState('mieszkanie')
+  const [transactionType, setTransactionType] = useState<'sprzedaz' | 'wynajem'>('sprzedaz')
   const [priceMax, setPriceMax] = useState('')
-  const [showMoreFilters, setShowMoreFilters] = useState(false)
-
-  // Filtry dodatkowe
   const [priceMin, setPriceMin] = useState('')
+  const [pricePerM2Min, setPricePerM2Min] = useState('')
+  const [pricePerM2Max, setPricePerM2Max] = useState('')
   const [areaMin, setAreaMin] = useState('')
   const [areaMax, setAreaMax] = useState('')
   const [roomsMin, setRoomsMin] = useState('')
   const [roomsMax, setRoomsMax] = useState('')
   const [floorMin, setFloorMin] = useState('')
   const [floorMax, setFloorMax] = useState('')
-  const [hasElevator, setHasElevator] = useState(false)
   const [marketType, setMarketType] = useState<'' | 'pierwotny' | 'wtorny'>('')
-  const [radiusKm, setRadiusKm] = useState('')
+  const [sellerType, setSellerType] = useState<'' | 'agencja' | 'prywatny'>('')
+  const [radiusKm, setRadiusKm] = useState('0')
   const [placeCoords, setPlaceCoords] = useState<{ lat: number; lng: number } | null>(null)
+
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
+  const [hasElevator, setHasElevator] = useState(false)
+  const [keywordsInclude, setKeywordsInclude] = useState('')
+  const [keywordsExclude, setKeywordsExclude] = useState('')
 
   const [results, setResults] = useState<api.SearchResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -38,9 +43,11 @@ export function SearchPage() {
     return {
       city,
       property_type: propertyType,
-      transaction_type: 'sprzedaz',
+      transaction_type: transactionType,
       price_min: priceMin ? Number(priceMin) : undefined,
       price_max: priceMax ? Number(priceMax) : undefined,
+      price_per_m2_min: pricePerM2Min ? Number(pricePerM2Min) : undefined,
+      price_per_m2_max: pricePerM2Max ? Number(pricePerM2Max) : undefined,
       area_min: areaMin ? Number(areaMin) : undefined,
       area_max: areaMax ? Number(areaMax) : undefined,
       rooms_min: roomsMin ? Number(roomsMin) : undefined,
@@ -49,7 +56,10 @@ export function SearchPage() {
       floor_max: floorMax ? Number(floorMax) : undefined,
       has_elevator: hasElevator || undefined,
       market_type: marketType || undefined,
-      radius_km: radiusKm ? Number(radiusKm) : undefined,
+      seller_type: sellerType || undefined,
+      keywords_include: keywordsInclude || undefined,
+      keywords_exclude: keywordsExclude || undefined,
+      radius_km: radiusKm && radiusKm !== '0' ? Number(radiusKm) : undefined,
       center_lat: placeCoords?.lat,
       center_lng: placeCoords?.lng,
       limit: 20,
@@ -105,39 +115,163 @@ export function SearchPage() {
       <p className="text-ink-soft text-sm mb-6">Jedno zapytanie przeszukuje wszystkie portale naraz</p>
 
       <form onSubmit={onSubmit} className="bg-white border border-line rounded-xl p-5 mb-6">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-ink-soft mb-1">Miasto</label>
+        {/* Rzad 1: lokalizacja, promien, typ nieruchomosci, typ oferty, cena */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-ink-soft mb-1">Lokalizacja</label>
             <CityAutocomplete value={city} onChange={setCity} onSelectPlace={onPlaceSelected} />
           </div>
-          <div className="min-w-[140px]">
-            <label className="block text-xs font-medium text-ink-soft mb-1">Typ</label>
-            <select
-              value={propertyType}
-              onChange={e => setPropertyType(e.target.value)}
-              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40"
-            >
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Promień</label>
+            <select value={radiusKm} onChange={e => setRadiusKm(e.target.value)}
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40">
+              <option value="0">+ 0 km</option>
+              <option value="5">+ 5 km</option>
+              <option value="10">+ 10 km</option>
+              <option value="20">+ 20 km</option>
+              <option value="50">+ 50 km</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Rodzaj nieruchomości</label>
+            <select value={propertyType} onChange={e => setPropertyType(e.target.value)}
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40">
               <option value="mieszkanie">Mieszkanie</option>
               <option value="dom">Dom</option>
               <option value="dzialka">Działka</option>
             </select>
           </div>
-          <div className="min-w-[140px]">
-            <label className="block text-xs font-medium text-ink-soft mb-1">Cena max</label>
-            <input
-              type="number"
-              value={priceMax}
-              onChange={e => setPriceMax(e.target.value)}
-              placeholder="bez limitu"
-              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40"
-            />
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Typ oferty</label>
+            <select value={transactionType} onChange={e => setTransactionType(e.target.value as any)}
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40">
+              <option value="sprzedaz">Na sprzedaż</option>
+              <option value="wynajem">Na wynajem</option>
+            </select>
           </div>
+        </div>
+
+        {/* Rzad 2: ceny */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Cena (zł) od</label>
+            <input type="number" value={priceMin} onChange={e => setPriceMin(e.target.value)}
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Cena (zł) do</label>
+            <input type="number" value={priceMax} onChange={e => setPriceMax(e.target.value)}
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Cena za m² od</label>
+            <input type="number" value={pricePerM2Min} onChange={e => setPricePerM2Min(e.target.value)}
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Cena za m² do</label>
+            <input type="number" value={pricePerM2Max} onChange={e => setPricePerM2Max(e.target.value)}
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+          </div>
+        </div>
+
+        {/* Rzad 3: metraz, pokoje, pietro, rynek, sprzedajacy */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-ink-soft mb-1">Metraż od</label>
+              <input type="number" value={areaMin} onChange={e => setAreaMin(e.target.value)}
+                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-ink-soft mb-1">do</label>
+              <input type="number" value={areaMax} onChange={e => setAreaMax(e.target.value)}
+                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-ink-soft mb-1">Pokoje od</label>
+              <input type="number" value={roomsMin} onChange={e => setRoomsMin(e.target.value)}
+                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-ink-soft mb-1">do</label>
+              <input type="number" value={roomsMax} onChange={e => setRoomsMax(e.target.value)}
+                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-ink-soft mb-1">Piętro od</label>
+              <input type="number" value={floorMin} onChange={e => setFloorMin(e.target.value)}
+                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-ink-soft mb-1">do</label>
+              <input type="number" value={floorMax} onChange={e => setFloorMax(e.target.value)}
+                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Rynek</label>
+            <select value={marketType} onChange={e => setMarketType(e.target.value as any)}
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40">
+              <option value="">Dowolny</option>
+              <option value="wtorny">Wtórny</option>
+              <option value="pierwotny">Pierwotny</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Sprzedający</label>
+            <select value={sellerType} onChange={e => setSellerType(e.target.value as any)}
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40">
+              <option value="">Agencje i prywatni</option>
+              <option value="agencja">Tylko agencje</option>
+              <option value="prywatny">Tylko prywatni</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Slowa kluczowe */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Słowa kluczowe — zawiera</label>
+            <input value={keywordsInclude} onChange={e => setKeywordsInclude(e.target.value)} placeholder="np. balkon, ogród"
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-ink-soft mb-1">Słowa kluczowe — wyklucza</label>
+            <input value={keywordsExclude} onChange={e => setKeywordsExclude(e.target.value)} placeholder="np. parter, suterena"
+              className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowMoreFilters(s => !s)}
+          className="text-xs text-blue font-medium mb-3 hover:underline"
+        >
+          {showMoreFilters ? '− Mniej filtrów' : '+ Dodatki (winda, itp.)'}
+        </button>
+
+        {showMoreFilters && (
+          <div className="pt-3 border-t border-line mb-3">
+            <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
+              <input type="checkbox" checked={hasElevator} onChange={e => setHasElevator(e.target.checked)}
+                className="rounded border-line" />
+              Tylko z windą
+            </label>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-3 items-center pt-2">
           <button
             type="submit"
             disabled={loading}
             className="bg-ink text-cream px-5 py-2 rounded-lg text-sm font-medium hover:bg-ink/90 transition-colors disabled:opacity-50"
           >
-            {loading ? 'Szukam...' : 'Szukaj'}
+            {loading ? 'Szukam...' : 'Szukaj ogłoszeń'}
           </button>
           {city && (
             <button
@@ -145,79 +279,10 @@ export function SearchPage() {
               onClick={saveAsWatchlist}
               className="px-4 py-2 rounded-lg text-sm border border-line hover:bg-cream-2 transition-colors"
             >
-              {savedName ? '✓ Zapisano' : 'Obserwuj'}
+              {savedName ? '✓ Zapisano jako alert' : '🔔 Zapisz jako alert'}
             </button>
           )}
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowMoreFilters(s => !s)}
-          className="text-xs text-blue font-medium mt-3 hover:underline"
-        >
-          {showMoreFilters ? '− Mniej filtrów' : '+ Więcej filtrów'}
-        </button>
-
-        {showMoreFilters && (
-          <div className="mt-4 pt-4 border-t border-line grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-ink-soft mb-1">Cena min</label>
-              <input type="number" value={priceMin} onChange={e => setPriceMin(e.target.value)}
-                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-ink-soft mb-1">Metraż od</label>
-              <input type="number" value={areaMin} onChange={e => setAreaMin(e.target.value)}
-                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-ink-soft mb-1">Metraż do</label>
-              <input type="number" value={areaMax} onChange={e => setAreaMax(e.target.value)}
-                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-ink-soft mb-1">Promień (km)</label>
-              <input type="number" value={radiusKm} onChange={e => setRadiusKm(e.target.value)} placeholder="np. 10"
-                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-ink-soft mb-1">Pokoje od</label>
-              <input type="number" value={roomsMin} onChange={e => setRoomsMin(e.target.value)}
-                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-ink-soft mb-1">Pokoje do</label>
-              <input type="number" value={roomsMax} onChange={e => setRoomsMax(e.target.value)}
-                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-ink-soft mb-1">Piętro od</label>
-              <input type="number" value={floorMin} onChange={e => setFloorMin(e.target.value)}
-                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-ink-soft mb-1">Piętro do</label>
-              <input type="number" value={floorMax} onChange={e => setFloorMax(e.target.value)}
-                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-ink-soft mb-1">Rynek</label>
-              <select value={marketType} onChange={e => setMarketType(e.target.value as any)}
-                className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue/40">
-                <option value="">Dowolny</option>
-                <option value="wtorny">Wtórny</option>
-                <option value="pierwotny">Pierwotny</option>
-              </select>
-            </div>
-            <div className="flex items-end pb-2">
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={hasElevator} onChange={e => setHasElevator(e.target.checked)}
-                  className="rounded border-line" />
-                Tylko z windą
-              </label>
-            </div>
-          </div>
-        )}
       </form>
 
       {error && (

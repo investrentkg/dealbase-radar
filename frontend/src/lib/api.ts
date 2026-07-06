@@ -75,6 +75,8 @@ export interface SearchCriteria {
   property_type?: string
   price_min?: number
   price_max?: number
+  price_per_m2_min?: number
+  price_per_m2_max?: number
   area_min?: number
   area_max?: number
   rooms_min?: number
@@ -83,6 +85,9 @@ export interface SearchCriteria {
   floor_max?: number
   has_elevator?: boolean
   market_type?: 'pierwotny' | 'wtorny'
+  seller_type?: 'agencja' | 'prywatny'
+  keywords_include?: string
+  keywords_exclude?: string
   radius_km?: number
   center_lat?: number
   center_lng?: number
