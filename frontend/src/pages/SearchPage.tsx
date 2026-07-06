@@ -404,6 +404,16 @@ export function SearchPage() {
                   </div>
                 )}
 
+                {listing.hyperlocalComp && (
+                  <div className="mt-3 bg-[#eaf3de] rounded-lg p-3">
+                    <div className="text-xs font-semibold text-[#3b6d11] mb-1">📍 Ta sama ulica</div>
+                    <div className="text-xs text-[#3b6d11]">
+                      Na {listing.hyperlocalComp.street} znaleźliśmy {listing.hyperlocalComp.sampleSize} innych ofert
+                      {listing.hyperlocalComp.avgPricePerM2 ? ` ze średnią ${Math.round(listing.hyperlocalComp.avgPricePerM2).toLocaleString('pl-PL')} zł/m²` : ''} — najdokładniejsze możliwe porównanie, dokładniejsze niż średnia dzielnicy.
+                    </div>
+                  </div>
+                )}
+
                 {listing.legalFlags && listing.legalFlags.length > 0 && (
                   <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
                     <div className="text-xs font-semibold text-red-700 mb-1">⚠ Sprawdź przed decyzją</div>

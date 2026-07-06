@@ -198,6 +198,39 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
     }
   }
 
+  // ── Hiperlokalny sasiad: sprzedaze/oferty z TEJ SAMEJ ULICY ──────────
+  // Najsilniejszy mozliwy punkt odniesienia - dokladniejszy niz srednia
+  // dzielnicy. Ograniczenie: portale nie podaja numeru budynku osobno,
+  // wiec porownujemy na poziomie ulicy, nie dokladnie tej samej klatki -
+  // i tak to jasno nazywamy w UI (nie obiecujemy wiecej niz dowozimy).
+  const streetsInResults = [...new Set(allListings.map(l => l.address_street).filter((s): s is string => !!s))]
+  const hyperlocalByStreet = new Map<string, { avgPricePerM2: number | null; count: number }>()
+  if (streetsInResults.length > 0) {
+    const { data: streetRows } = await marketIntelDb
+      .from('portal_listings_archive')
+      .select('street, price_per_m2')
+      .eq('city', city)
+      .in('street', streetsInResults)
+      .not('price_per_m2', 'is', null)
+
+    for (const street of streetsInResults) {
+      const rows = (streetRows || []).filter((r: any) => r.street === street)
+      const prices = rows.map((r: any) => r.price_per_m2).filter((p: number) => p > 0)
+      hyperlocalByStreet.set(street, {
+        avgPricePerM2: prices.length > 0 ? prices.reduce((a: number, b: number) => a + b, 0) / prices.length : null,
+        count: prices.length,
+      })
+    }
+  }
+  function hyperlocalCompForListing(l: PortalListing) {
+    if (!l.address_street) return null
+    const comp = hyperlocalByStreet.get(l.address_street)
+    // Wymagamy min. 2 innych ofert na tej samej ulicy, zeby "srednia" mialo
+    // sens statystyczny - 1 punkt danych to nie porownanie, to przypadek.
+    if (!comp || comp.count < 2) return null
+    return { street: l.address_street, avgPricePerM2: comp.avgPricePerM2, sampleSize: comp.count }
+  }
+
   function dynamicsForListing(l: PortalListing) {
     const prior = archiveByKey.get(`${l.portal}:${l.external_id}`)
     const firstSeen = prior?.firstSeenAt ? new Date(prior.firstSeenAt) : (l.posted_at ? new Date(l.posted_at) : new Date())
@@ -231,12 +264,14 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
     const offerPricePerM2 = listing.price / listing.area
     const rcnStats = rcnForListing(listing)
     const archiveTrend = archiveTrendBySegment[segment]
+    const hyperlocal = hyperlocalCompForListing(listing)
     const score = calculateDealScore({
       offerPricePerM2,
       references: {
         transactionAvgPricePerM2: rcnStats?.medianPricePerM2 ?? null,
         listingsAvgPricePerM2: listingsAvgBySegment[segment],
         archiveTrendPricePerM2: archiveTrend?.avg ?? null,
+        hyperlocalPricePerM2: hyperlocal?.avgPricePerM2 ?? null,
       },
       dynamics: dynamicsForListing(listing),
     })
@@ -245,7 +280,7 @@ searchRouter.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
       percentBelowMarket: score.percentBelowMarket,
       sellerMotivationScore: score.sellerMotivationScore,
       price: listing.price,
-    }), legalFlags: detectLegalFlags(listing) }
+    }), legalFlags: detectLegalFlags(listing), hyperlocalComp: hyperlocal }
   })
 
   // ── Zapis do wspolnej bazy rynkowej (market_intel) ──────────────────

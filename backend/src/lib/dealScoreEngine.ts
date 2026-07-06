@@ -14,6 +14,7 @@ export interface PriceReferencePoints {
   transactionAvgPricePerM2: number | null   // punkt 1: RCN/Cenogram
   listingsAvgPricePerM2: number | null      // punkt 2: srednia z portali
   archiveTrendPricePerM2: number | null     // punkt 3: wlasna rosnaca baza
+  hyperlocalPricePerM2?: number | null      // punkt 4 (opcjonalny): ta sama ulica - najmocniejszy sygnal gdy dostepny
 }
 
 export interface MarketDynamics {
@@ -43,15 +44,19 @@ export interface DealScoreResult {
 // bez historii RCN) - liczymy z tego, co jest dostepne, ale odnotowujemy
 // ktorych zrodel uzylismy (przejrzystosc dla uzytkownika).
 function averageReferences(refs: PriceReferencePoints): { avg: number | null; used: string[] } {
-  const entries: [string, number | null][] = [
-    ['rejestr_transakcji', refs.transactionAvgPricePerM2],
-    ['oferty_portalowe', refs.listingsAvgPricePerM2],
-    ['wlasna_baza_trendow', refs.archiveTrendPricePerM2],
+  const entries: [string, number | null, number][] = [
+    ['rejestr_transakcji', refs.transactionAvgPricePerM2, 1],
+    ['oferty_portalowe', refs.listingsAvgPricePerM2, 1],
+    ['wlasna_baza_trendow', refs.archiveTrendPricePerM2, 1],
+    // Waga 2x - sprzedaz na TEJ SAMEJ ULICY to najsilniejszy mozliwy
+    // punkt odniesienia, silniejszy niz srednia dzielnicy/miasta.
+    ['hiperlokalny_sasiad', refs.hyperlocalPricePerM2 ?? null, 2],
   ]
-  const available = entries.filter(([, v]) => v !== null) as [string, number][]
+  const available = entries.filter(([, v]) => v !== null) as [string, number, number][]
   if (available.length === 0) return { avg: null, used: [] }
 
-  const avg = available.reduce((sum, [, v]) => sum + v, 0) / available.length
+  const totalWeight = available.reduce((sum, [, , w]) => sum + w, 0)
+  const avg = available.reduce((sum, [, v, w]) => sum + v * w, 0) / totalWeight
   return { avg, used: available.map(([k]) => k) }
 }
 

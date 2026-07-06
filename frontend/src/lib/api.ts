@@ -117,6 +117,12 @@ export interface LegalFlag {
   matchedPhrase: string
 }
 
+export interface HyperlocalComp {
+  street: string
+  avgPricePerM2: number | null
+  sampleSize: number
+}
+
 export interface Listing {
   portal: string
   external_id: string
@@ -137,6 +143,7 @@ export interface Listing {
   dealScore: DealScoreResult | null
   recommendation?: Recommendation | null
   legalFlags?: LegalFlag[]
+  hyperlocalComp?: HyperlocalComp | null
 }
 
 export interface SearchResponse {
