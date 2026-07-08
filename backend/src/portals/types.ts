@@ -30,6 +30,7 @@ export interface PortalListing {
   property_type:    string
   transaction_type: string
   thumbnail_url:    string | null
+  photos?:          string[]  // pelna galeria (nie tylko miniatura) - do generowania PDF
   description:      string | null
   posted_at:        string | null
   agency_name:      string | null

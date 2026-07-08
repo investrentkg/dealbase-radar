@@ -1,10 +1,9 @@
 // ── Generator PDF oferty z agregatora ───────────────────────────────────
-// v1: jedno zdjęcie (miniaturka z wyników wyszukiwania - to jedyne zdjęcie
-// dostępne na tym etapie, wyniki wyszukiwania portali nie zawierają pełnej
-// galerii). Żeby mieć wszystkie zdjęcia z ogłoszenia, trzeba by dobudować
-// osobny krok "pobierz pełne dane oferty" per portal (Otodom/OLX/itd. mają
-// osobne strony szczegółów) - to nie jest jeszcze zbudowane, do zrobienia
-// w kolejnej sesji jeśli okaże się potrzebne.
+// v2: pełna galeria zdjęć (nie tylko miniaturka) - wyniki wyszukiwania
+// portali zawierają pełną tablicę zdjęć (item.images/photos), wcześniej
+// wyciągaliśmy z niej tylko pierwsze zdjęcie do miniaturki. Teraz
+// wykorzystujemy wszystkie (do 12) - zdjęcie hero na pierwszej stronie +
+// siatka pozostałych na drugiej.
 //
 // Branding zgodny z ustalonym systemem InvestRent: granat + złoto na
 // kremowym tle, font DejaVu Sans (obsługa polskich znaków).
@@ -34,6 +33,17 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   }
 }
 
+function drawHeader(doc: PDFKit.PDFDocument, pageWidth: number, margin: number, clientName?: string) {
+  doc.rect(0, 0, pageWidth, 90).fill(COLORS.navy)
+  doc.fillColor(COLORS.gold).font('Bold').fontSize(20).text('InvestRent', margin, 30)
+  doc.fillColor('#FFFFFF').font('Regular').fontSize(10)
+    .text('Nieruchomości nad Bałtykiem · Kołobrzeg', margin, 56)
+  if (clientName) {
+    doc.fillColor('#FFFFFF').font('Regular').fontSize(9)
+      .text(`Przygotowano dla: ${clientName}`, pageWidth - margin - 200, 30, { width: 200, align: 'right' })
+  }
+}
+
 export interface OfferPdfOptions {
   listing: PortalListing
   description: string
@@ -44,11 +54,22 @@ export interface OfferPdfOptions {
 
 /**
  * Generuje PDF oferty i zwraca go jako Buffer. Zakłada, że zgoda na
- * wykorzystanie zdjęcia została już zweryfikowana PRZED wywołaniem tej
+ * wykorzystanie zdjęć została już zweryfikowana PRZED wywołaniem tej
  * funkcji (patrz routes/offerPdf.ts) - ten moduł tylko renderuje.
  */
 export async function generateOfferPdf(opts: OfferPdfOptions): Promise<Buffer> {
   const { listing, description, agentName, agentPhone, clientName } = opts
+
+  // Zbierz wszystkie dostępne zdjęcia - pełna galeria jeśli jest, inaczej
+  // pojedyncza miniaturka jako fallback (starsze wyniki wyszukiwania mogą
+  // jej nie mieć, jeśli zostały zapisane przed tą zmianą)
+  const photoUrls = (listing.photos && listing.photos.length > 0)
+    ? listing.photos
+    : (listing.thumbnail_url ? [listing.thumbnail_url] : [])
+
+  // Pobierz wszystkie zdjęcia równolegle (max 12, ograniczone już w extractPhotos)
+  const photoBuffers = (await Promise.all(photoUrls.map(url => fetchImageBuffer(url))))
+    .filter((buf): buf is Buffer => !!buf)
 
   return new Promise(async (resolve, reject) => {
     try {
@@ -62,34 +83,23 @@ export async function generateOfferPdf(opts: OfferPdfOptions): Promise<Buffer> {
       doc.registerFont('Bold', FONT_BOLD)
 
       const pageWidth = doc.page.width
+      const pageHeight = doc.page.height
       const margin = 40
 
-      // ── Pasek nagłówkowy (granat) ──────────────────────────────────
-      doc.rect(0, 0, pageWidth, 90).fill(COLORS.navy)
-      doc.fillColor(COLORS.gold).font('Bold').fontSize(20)
-        .text('InvestRent', margin, 30)
-      doc.fillColor('#FFFFFF').font('Regular').fontSize(10)
-        .text('Nieruchomości nad Bałtykiem · Kołobrzeg', margin, 56)
-
-      if (clientName) {
-        doc.fillColor('#FFFFFF').font('Regular').fontSize(9)
-          .text(`Przygotowano dla: ${clientName}`, pageWidth - margin - 200, 30, { width: 200, align: 'right' })
-      }
-
+      // ═══════════════════ STRONA 1: zdjęcie hero + fakty ═══════════════
+      drawHeader(doc, pageWidth, margin, clientName)
       let y = 110
 
-      // ── Zdjęcie ──────────────────────────────────────────────────────
-      const imgBuffer = listing.thumbnail_url ? await fetchImageBuffer(listing.thumbnail_url) : null
-      if (imgBuffer) {
+      const [heroBuffer, ...restBuffers] = photoBuffers
+      if (heroBuffer) {
         try {
-          doc.image(imgBuffer, margin, y, { width: pageWidth - margin * 2, height: 280, fit: [pageWidth - margin * 2, 280], align: 'center' })
+          doc.image(heroBuffer, margin, y, { width: pageWidth - margin * 2, height: 280, fit: [pageWidth - margin * 2, 280], align: 'center' })
           y += 295
         } catch {
           // uszkodzony/niewczytywalny obraz - pomijamy, nie wywalamy calego PDF
         }
       }
 
-      // ── Tytuł i cena ───────────────────────────────────────────────
       doc.fillColor(COLORS.textDark).font('Bold').fontSize(18)
         .text(listing.title || 'Oferta nieruchomości', margin, y, { width: pageWidth - margin * 2 })
       y = doc.y + 6
@@ -100,7 +110,6 @@ export async function generateOfferPdf(opts: OfferPdfOptions): Promise<Buffer> {
         y = doc.y + 10
       }
 
-      // ── Kluczowe fakty (siatka) ──────────────────────────────────────
       const facts: [string, string][] = [
         ['Lokalizacja', `${listing.address_district ? listing.address_district + ', ' : ''}${listing.address_city}`],
         ['Powierzchnia', listing.area ? `${listing.area} m²` : '—'],
@@ -117,30 +126,56 @@ export async function generateOfferPdf(opts: OfferPdfOptions): Promise<Buffer> {
         const row = Math.floor(i / 2)
         const x = margin + col * colWidth
         const rowY = y + row * 40
-        doc.fillColor(COLORS.textMuted).font('Regular').fontSize(9)
-          .text(label.toUpperCase(), x, rowY)
-        doc.fillColor(COLORS.textDark).font('Bold').fontSize(13)
-          .text(value, x, rowY + 13)
+        doc.fillColor(COLORS.textMuted).font('Regular').fontSize(9).text(label.toUpperCase(), x, rowY)
+        doc.fillColor(COLORS.textDark).font('Bold').fontSize(13).text(value, x, rowY + 13)
       })
-      y += Math.ceil(facts.length / 2) * 40 + 16
+      y += Math.ceil(facts.length / 2) * 40 + 10
 
-      doc.moveTo(margin, y).lineTo(pageWidth - margin, y).strokeColor('#E5E1D6').stroke()
-      y += 20
+      if (photoUrls.length > 1) {
+        doc.fillColor(COLORS.textMuted).font('Regular').fontSize(9)
+          .text(`Zdjęć w tej ofercie: ${photoUrls.length} — pozostałe na kolejnej stronie`, margin, y)
+      }
 
-      // ── Opis (wygenerowany, nie kopiowany od ogłoszeniodawcy) ────────
-      doc.fillColor(COLORS.navy).font('Bold').fontSize(13).text('Opis nieruchomości', margin, y)
-      y = doc.y + 8
+      // ═══════════════════ STRONA 2: siatka pozostałych zdjęć ═══════════
+      if (restBuffers.length > 0) {
+        doc.addPage()
+        drawHeader(doc, pageWidth, margin, clientName)
+        doc.fillColor(COLORS.navy).font('Bold').fontSize(14).text('Zdjęcia', margin, 108)
+
+        const gridY0 = 135
+        const gap = 10
+        const cols = 2
+        const cellW = (pageWidth - margin * 2 - gap * (cols - 1)) / cols
+        const cellH = 150
+
+        restBuffers.slice(0, 8).forEach((buf, i) => {
+          const col = i % cols
+          const row = Math.floor(i / cols)
+          const x = margin + col * (cellW + gap)
+          const rowY = gridY0 + row * (cellH + gap)
+          try {
+            doc.image(buf, x, rowY, { width: cellW, height: cellH, fit: [cellW, cellH], align: 'center' })
+          } catch {
+            // pomijamy pojedyncze uszkodzone zdjecie
+          }
+        })
+      }
+
+      // ═══════════════════ Opis (zawsze na nowej stronie na końcu) ══════
+      doc.addPage()
+      drawHeader(doc, pageWidth, margin, clientName)
+      let dy = 110
+      doc.fillColor(COLORS.navy).font('Bold').fontSize(13).text('Opis nieruchomości', margin, dy)
+      dy = doc.y + 8
       doc.fillColor(COLORS.textDark).font('Regular').fontSize(11)
-        .text(description, margin, y, { width: pageWidth - margin * 2, align: 'justify', lineGap: 3 })
+        .text(description, margin, dy, { width: pageWidth - margin * 2, align: 'justify', lineGap: 3 })
 
-      // ── Stopka kontaktowa ─────────────────────────────────────────────
-      const footerY = doc.page.height - 80
+      // ── Stopka kontaktowa (na ostatniej stronie) ──────────────────────
+      const footerY = pageHeight - 80
       doc.rect(0, footerY, pageWidth, 80).fill(COLORS.cream)
       doc.moveTo(margin, footerY).lineTo(pageWidth - margin, footerY).strokeColor(COLORS.gold).lineWidth(2).stroke()
-      doc.fillColor(COLORS.navy).font('Bold').fontSize(12)
-        .text(agentName || 'InvestRent Nieruchomości', margin, footerY + 18)
-      doc.fillColor(COLORS.textMuted).font('Regular').fontSize(10)
-        .text(agentPhone || 'kontakt@investrent.com.pl', margin, footerY + 36)
+      doc.fillColor(COLORS.navy).font('Bold').fontSize(12).text(agentName || 'InvestRent Nieruchomości', margin, footerY + 18)
+      doc.fillColor(COLORS.textMuted).font('Regular').fontSize(10).text(agentPhone || 'kontakt@investrent.com.pl', margin, footerY + 36)
       doc.fillColor(COLORS.textMuted).font('Regular').fontSize(8)
         .text('Materiał przygotowany na podstawie zgody właściciela nieruchomości na wykorzystanie zdjęć.', margin, footerY + 54, { width: pageWidth - margin * 2 })
 

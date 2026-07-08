@@ -178,6 +178,24 @@ function rememberOtodomPath(city: string, url: string) {
   } catch { /* best-effort, nie krytyczne */ }
 }
 
+// ── Uniwersalne wyciąganie pełnej galerii zdjęć ─────────────────────────
+// Różne portale/actory zwracają zdjęcia w różnym kształcie: tablica
+// czystych URL-i (OLX czasem), tablica obiektów z .large/.medium (Otodom),
+// tablica obiektów z .link (OLX czasem). Ta funkcja obsługuje wszystkie
+// warianty na raz, zamiast pisać osobną logikę w każdym mapowaniu.
+function extractPhotos(item: any, limit = 12): string[] {
+  const raw = item.images || item.photos || []
+  if (!Array.isArray(raw)) return []
+  const urls = raw.map((img: any) => {
+    if (typeof img === 'string') return img
+    if (img && typeof img === 'object') {
+      return img.large || img.medium || img.link?.replace('{width}', '800').replace('{height}', '600') || img.url || null
+    }
+    return null
+  }).filter((u: any): u is string => !!u)
+  return urls.slice(0, limit)
+}
+
 function mapOtodomItem(item: any, transType: string): PortalListing {
   // Realny schemat trev0n~otodom-scraper: pola płaskie (price, area, rooms, city, mainImage)
   const price = typeof item.price === 'number' ? item.price : (item.price?.value ?? item.totalPrice ?? null)
@@ -198,6 +216,7 @@ function mapOtodomItem(item: any, transType: string): PortalListing {
     property_type: item.estate || 'mieszkanie',
     transaction_type: transType,
     thumbnail_url: item.mainImage || item.images?.[0]?.large || item.images?.[0]?.medium || item.mainPhoto || null,
+    photos: extractPhotos(item),
     // Pełny opis (do 2000 znaków) — do wstępnego podglądu w CRM bez wychodzenia na portal
     description: (item.description || item.shortDescription || '').substring(0, 2000) || null,
     posted_at: item.dateModified || item.dateCreated || item.dateCreatedFirst || item.createdAt || null,
@@ -297,6 +316,7 @@ function mapOlxItem(item: any, transType: string): PortalListing {
     property_type: 'mieszkanie',
     transaction_type: transType,
     thumbnail_url: thumbnail,
+    photos: extractPhotos(item),
     description: (item.description || '').substring(0, 300) || null,
     posted_at: item.datePosted || item.createdAt || item.created_at || null,
     agency_name: item.sellerType === 'business' ? (item.sellerName || null) : null,
@@ -365,6 +385,7 @@ function mapGratkaItem(item: any, transType: string): PortalListing {
     property_type: 'mieszkanie',
     transaction_type: transType,
     thumbnail_url: item.mainImage || item.photos?.[0] || item.mainPhoto || item.thumbnail || null,
+    photos: extractPhotos(item),
     description: (item.description || '').substring(0, 300) || null,
     posted_at: item.addedAt || item.createdAt || null,
     agency_name: item.agencyName || item.agency?.name || null,
@@ -437,6 +458,7 @@ function mapMorizonItem(item: any, transType: string): PortalListing {
     property_type: 'mieszkanie',
     transaction_type: transType,
     thumbnail_url: item.mainImage || item.photos?.[0] || item.thumbnail || null,
+    photos: extractPhotos(item),
     description: (item.description || '').substring(0, 300) || null,
     posted_at: item.addedAt || item.createdAt || null,
     agency_name: item.agencyName || item.agency?.name || null,
@@ -493,6 +515,7 @@ function mapNieroOnlineItem(item: any, transType: string): PortalListing {
     property_type: 'mieszkanie',
     transaction_type: transType,
     thumbnail_url: item.photos?.[0] || item.thumbnail || null,
+    photos: extractPhotos(item),
     description: (item.description || '').substring(0, 300) || null,
     posted_at: item.createdAt || null,
     agency_name: item.agency?.name || null,
@@ -535,6 +558,7 @@ function mapDomiportaItem(item: any, transType: string, propType: string): Porta
     property_type: propType,
     transaction_type: transType,
     thumbnail_url: item.mainImage || item.images?.[0] || null,
+    photos: extractPhotos(item),
     description: (item.description || '').substring(0, 300) || null,
     posted_at: item.datePosted || null,
     agency_name: null, // aktor nie zwraca nazwy agencji, tylko typ sprzedającego
@@ -597,6 +621,7 @@ function mapAdresowoItem(item: any, transType: string, propType: string, searchC
     property_type: propType,
     transaction_type: transType,
     thumbnail_url: item.mainImage || item.images?.[0] || null,
+    photos: extractPhotos(item),
     description: (item.description || '').substring(0, 300) || null,
     posted_at: null, // aktor nie zwraca daty publikacji
     agency_name: null,
