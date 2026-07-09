@@ -1,14 +1,17 @@
-name: Scan watchlists (2x dziennie)
+name: Scan watchlists (4x dziennie)
 
 # Uruchamia skaner watchlist - dla każdej aktywnej watchlisty sprawdza
 # agregator względem nowych ofert i wysyła zbiorczy e-mail, jeśli są
-# nowe trafienia. Godziny w UTC: 6:00 i 15:00 -> 8:00 i 17:00 czasu
-# polskiego (latem, CEST) - rano i po południu, tak jak Daniel chciał
-# "raz albo dwa razy dziennie podsumowanie".
+# nowe trafienia. Godziny w UTC: 5:00, 10:00, 15:00, 20:00 -> 7:00, 12:00,
+# 17:00, 22:00 czasu polskiego (latem, CEST) - równe 5-godzinne odstępy
+# w ciągu dnia, dłuższa przerwa nocna (22:00-7:00), bo wtedy najmniej
+# nowych ogłoszeń.
 on:
   schedule:
-    - cron: '0 6 * * *'
+    - cron: '0 5 * * *'
+    - cron: '0 10 * * *'
     - cron: '0 15 * * *'
+    - cron: '0 20 * * *'
   workflow_dispatch:
 
 jobs:
