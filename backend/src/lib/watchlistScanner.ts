@@ -69,7 +69,7 @@ function formatListingHtml(l: PortalListing): string {
  * (saved-searches, LIVE_REFRESH_HOURS) — działa jako siatka bezpieczeństwa,
  * gdyby częstotliwość crona kiedyś wzrosła bez ponownej analizy kosztów.
  */
-const LIVE_SCAN_THROTTLE_HOURS = 6
+const LIVE_SCAN_THROTTLE_HOURS = 4
 
 async function scanSingleWatchlist(watchlist: WatchlistRow): Promise<{ newListings: PortalListing[]; candidatesTotal: number; error?: string; throttled?: boolean }> {
   const now = new Date()
