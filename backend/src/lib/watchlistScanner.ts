@@ -22,6 +22,7 @@ interface WatchlistRow {
   name: string | null
   criteria: PortalSearchParams
   is_active: boolean
+  last_live_scan_at: string | null
 }
 
 interface ScanSummaryItem {
@@ -31,6 +32,7 @@ interface ScanSummaryItem {
   new_listings: number
   email_sent: boolean
   email_skip_reason?: string
+  throttled?: boolean
 }
 
 export interface ScanResult {
@@ -60,11 +62,29 @@ function formatListingHtml(l: PortalListing): string {
 /**
  * Skanuje JEDNĄ watchlistę: szuka ofert wg jej kryteriów, zwraca tylko te,
  * które nie były jeszcze wcześniej zaalarmowane dla tej watchlisty.
+ *
+ * Zabezpieczenie kosztowe: żywe zapytanie do agregatora (Apify) wykonujemy
+ * maksymalnie raz na LIVE_SCAN_THROTTLE_HOURS per watchlist, niezależnie od
+ * tego jak często odpala się cron. To ten sam wzorzec co w CRM-ie
+ * (saved-searches, LIVE_REFRESH_HOURS) — działa jako siatka bezpieczeństwa,
+ * gdyby częstotliwość crona kiedyś wzrosła bez ponownej analizy kosztów.
  */
-async function scanSingleWatchlist(watchlist: WatchlistRow): Promise<{ newListings: PortalListing[]; candidatesTotal: number; error?: string }> {
+const LIVE_SCAN_THROTTLE_HOURS = 6
+
+async function scanSingleWatchlist(watchlist: WatchlistRow): Promise<{ newListings: PortalListing[]; candidatesTotal: number; error?: string; throttled?: boolean }> {
+  const now = new Date()
+  const lastScan = watchlist.last_live_scan_at ? new Date(watchlist.last_live_scan_at) : null
+  const throttled = !!lastScan && (now.getTime() - lastScan.getTime()) < LIVE_SCAN_THROTTLE_HOURS * 3600000
+
+  if (throttled) {
+    return { newListings: [], candidatesTotal: 0, throttled: true }
+  }
+
   try {
     const results = await searchAllPortals(watchlist.criteria)
     const candidates = results.flatMap(r => r.listings)
+
+    await radarDb.from('watchlists').update({ last_live_scan_at: now.toISOString() }).eq('id', watchlist.id)
 
     if (candidates.length === 0) return { newListings: [], candidatesTotal: 0 }
 
@@ -95,7 +115,7 @@ export async function scanAllWatchlists(): Promise<ScanResult> {
 
   const { data: watchlists, error: wlError } = await radarDb
     .from('watchlists')
-    .select('id, user_id, name, criteria, is_active')
+    .select('id, user_id, name, criteria, is_active, last_live_scan_at')
     .eq('is_active', true)
 
   if (wlError) {
@@ -109,7 +129,7 @@ export async function scanAllWatchlists(): Promise<ScanResult> {
   const newListingsByUser = new Map<string, { listing: PortalListing; watchlistId: string; watchlistName: string }[]>()
 
   for (const wl of rows) {
-    const { newListings, candidatesTotal, error } = await scanSingleWatchlist(wl)
+    const { newListings, candidatesTotal, error, throttled } = await scanSingleWatchlist(wl)
     if (error) errors.push(`watchlist ${wl.id} (${wl.name || 'bez nazwy'}): ${error}`)
 
     summary.push({
@@ -118,6 +138,7 @@ export async function scanAllWatchlists(): Promise<ScanResult> {
       candidates_found: candidatesTotal,
       new_listings: newListings.length,
       email_sent: false,
+      ...(throttled ? { throttled: true } : {}),
     })
 
     if (newListings.length > 0) {
