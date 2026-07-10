@@ -14,6 +14,7 @@ import { offerPdfRouter } from './routes/offerPdf'
 import { geocodeRouter } from './routes/geocode'
 import { demandSignalsRouter } from './routes/demandSignals'
 import { requireAuth } from './middleware/auth'
+import { scanAllWatchlists } from './lib/watchlistScanner'
 
 dotenv.config()
 
@@ -41,4 +42,15 @@ app.use('/api/demand-signals', demandSignalsRouter)
 const PORT = process.env.PORT || 4100
 app.listen(PORT, () => {
   console.log(`DealBase Radar backend running on port ${PORT}`)
+
+  // Skaner watchlist — wcześniej odpalany 4x/dzień przez GitHub Actions
+  // (zjadał limit minut Actions). Backend działa 24/7 na Railway, więc
+  // harmonogram żyje bezpośrednio w procesie — zero dodatkowego kosztu,
+  // niezależność od limitu GH Actions. scan-watchlists.yml zostaje jako
+  // ręczny fallback (workflow_dispatch).
+  if (process.env.NODE_ENV === 'production') {
+    setTimeout(() => scanAllWatchlists(), 60000)
+    setInterval(() => scanAllWatchlists(), 5 * 60 * 60 * 1000)
+    console.log('🔍 Watchlist Scanner — scheduler uruchomiony (co 5h)')
+  }
 })
